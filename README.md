@@ -10,7 +10,7 @@ Built with **Next.js 16**, **React 19**, **Tailwind CSS 4**, and **Radix UI**.
 
 ## Brand Context — AI-Assisted Brand Setup
 
-The Brand Context module is the core brand configuration hub. Instead of a traditional multi-page form, it uses an **AI-assisted chat + form wizard** pattern — merchants upload brand files on the left, and Nohi auto-fills the structured form on the right.
+Brand Context is an AI-powered alternative to manually filling out brand profile forms. Merchants simply upload their brand files, and Nohi automatically reads and fills in all the fields — no manual selection needed.
 
 ### Demo
 
