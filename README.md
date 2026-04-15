@@ -2,8 +2,6 @@
 
 > [Chinese Version / 中文版](README.zh.md)
 
-> AI-powered seller platform for brand management, agentic catalog, channel control, and analytics.
-
 Built with **Next.js 16**, **React 19**, **Tailwind CSS 4**, and **Radix UI**.
 
 ---

@@ -2,8 +2,6 @@
 
 > [English Version](README.md)
 
-> AI 驱动的卖家平台，集品牌管理、智能商品目录、渠道管控与数据分析于一体。
-
 基于 **Next.js 16**、**React 19**、**Tailwind CSS 4** 和 **Radix UI** 构建。
 
 ---
