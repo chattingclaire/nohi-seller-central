@@ -164,12 +164,16 @@ components/seller/
 
 ## 快速开始
 
+需要 [Node.js](https://nodejs.org/) 18+ 和 npm。
+
 ```bash
+git clone https://github.com/chattingclaire/nohi-seller-central.git
+cd nohi-seller-central
 npm install
 npm run dev
 ```
 
-打开 [http://localhost:3000/seller/brand-context](http://localhost:3000/seller/brand-context) 查看Brand Context页面。
+打开 [http://localhost:3000/seller/brand-context](http://localhost:3000/seller/brand-context) 查看 Brand Context 页面。
 
 ---
 

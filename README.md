@@ -164,7 +164,11 @@ components/seller/
 
 ## Getting Started
 
+Requires [Node.js](https://nodejs.org/) 18+ and npm.
+
 ```bash
+git clone https://github.com/chattingclaire/nohi-seller-central.git
+cd nohi-seller-central
 npm install
 npm run dev
 ```
