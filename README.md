@@ -50,7 +50,7 @@ When the merchant first lands on the page, a handwriting-style card warmly welco
 ![Initial State](docs/brand-context/01-initial-onboarding.png)
 
 #### 2. File Upload — Paste, Attach, or Drop
-The Claude-style combined input supports multiple ways to add files:
+The combined input supports multiple ways to add files:
 - **Paste**: `Ctrl/Cmd+V` files directly into the textarea
 - **Attach**: Click the paperclip button to open file picker
 - **Supported formats**: PDF, PPT, DOC, images (PNG/JPG/SVG), CSV, XLSX, TXT
@@ -85,15 +85,15 @@ The chat handles different scenarios intelligently:
 | User Action | Nohi Response | Form Effect |
 |-------------|--------------|-------------|
 | **Upload files (PDF/PPT/IMG...)** | Parses all files, shows detailed breakdown of what was filled vs. what's still missing, suggests additional uploads | Auto-fills ALL 5 steps at once |
-| **Text-only (no files yet)** | "Upload brand files and Nohi will auto-fill the form for you. You can also edit the form directly." | No changes to form |
-| **Text-only (files already uploaded)** | "Use @ to reference uploaded files, or edit the fields directly on the right." | No changes to form |
-| **Type `@` in input** | File picker dropdown appears — click a file to insert `@filename` reference | No changes to form |
+| **Text-only (no files yet)** | Nohi tries to extract brand info from the text (links, brand name, category, etc.) and fills matching fields; for anything it can't identify, it guides the user to upload files | Fills fields where info is extractable, otherwise no changes |
+| **Text-only (files already uploaded)** | Nohi edits the relevant fields based on the user's description; supports `@` file references for targeted re-parsing | Updates the specified fields |
+| **Type `@` in input** | File picker dropdown appears — click a file to insert `@filename` reference for targeted updates | Combined with text description, updates the specified fields |
 
-**Scenario A: Text-only message without files** — Nohi guides the user to upload files, no form fields are touched:
+**Scenario A: Text-only message without files** — Nohi extracts what it can from the text and guides the user to upload files for the rest:
 
 ![Text Only Response](docs/brand-context/08-text-only-no-files.png)
 
-**Scenario B: @ file mention** — After files are uploaded, typing `@` shows a dropdown of all uploaded files to reference in the conversation:
+**Scenario B: @ file mention to edit fields** — After files are uploaded, type `@` to select a file and describe what to update — Nohi re-parses and updates the relevant fields:
 
 ![@ File Mention](docs/brand-context/09-at-mention-file-picker.png)
 
@@ -120,50 +120,24 @@ Each step preserves the original form design:
 #### 7. Bilingual Support (EN / ZH)
 All text — guide cards, placeholders, AI responses, form labels — supports English and Chinese via `useLanguage()` hook. The language auto-detects from user settings.
 
-### Conversation Flow Diagram
+### Interaction Flow
 
-```
-User lands on Brand Context
-         │
-         ▼
-┌─────────────────────┐
-│  Guide Card shown   │
-│  "Hey! Welcome..."  │
-│  Form is empty      │
-└─────────┬───────────┘
-          │
-    ┌─────┴──────┐
-    │            │
-    ▼            ▼
- Upload      Type text
- files       (no files)
-    │            │
-    ▼            ▼
- Nohi parses  Nohi says:
- & fills ALL  "Upload files
- 5 steps      and I'll fill
-    │          the form"
-    ▼            │
- AI response     ▼
- shows:       User can:
- ✓ Filled     - Upload files
- ⚠ Incomplete - Edit form
- → Click to     directly
-   review
-    │
-    ▼
- User reviews each step
- Edits fields as needed
-    │
-    ▼
- ┌──────────────────┐
- │ Type text with    │
- │ files uploaded:   │
- │ "Use @ to ref     │
- │  files, or edit   │
- │  form directly"   │
- └──────────────────┘
-```
+**Step 1: Landing**
+- Welcome guide card is shown, form is empty
+- User can upload files or type text
+
+**Step 2: First Interaction**
+
+| Method | Behavior |
+|--------|----------|
+| Upload files | Nohi parses file content and auto-fills all 5 form steps at once |
+| Type text (with brand info/links) | Nohi extracts brand info from the text and fills matching fields; suggests uploading files for the rest |
+| Type text (no brand info) | Nohi guides the user to upload files, or to edit the form directly |
+
+**Step 3: Review & Edit**
+- Click through the step bar to review auto-filled content
+- Edit any field directly in the right panel
+- Use `@filename` in chat to reference an uploaded file, describe what to change — Nohi re-parses and updates the relevant fields
 
 ### File Structure
 
