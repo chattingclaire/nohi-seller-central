@@ -70,6 +70,8 @@ When files are sent, Nohi parses them and fills **all 5 steps simultaneously**:
 | Guardrails | Excluded audiences, prohibited scenarios, blocked keywords |
 | Fulfillment | Processing time, on-time rate, return metrics |
 
+> **Principle: Preserve original wording.** Nohi prioritizes the merchant's own language and expressions when filling form fields — brand stories, founder notes, and taglines are extracted as close to the original source material as possible, rather than being rewritten or paraphrased by AI. This ensures the brand voice stays authentic.
+
 The AI response shows a detailed breakdown:
 - **Filled sections** with direct links to each step for review
 - **Incomplete sections** with suggestions for what additional files to upload
