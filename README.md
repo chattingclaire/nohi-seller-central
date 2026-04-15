@@ -98,10 +98,10 @@ The chat handles different scenarios intelligently:
 ![@ File Mention](docs/brand-context/09-at-mention-file-picker.png)
 
 #### 5. Collapsible File List
-After uploading, files appear in a compact collapsible header:
+After uploading, files appear in a compact collapsible header at the top of the chat panel:
 - Shows `"📎 3 files >"` in one line by default — minimal vertical footprint
-- Click to expand and see individual file names, types, and sizes
-- Files persist across step navigation
+- **Click to expand** and see individual file names, types, and sizes; click again to collapse
+- Files persist across step navigation — always accessible no matter which step you're on
 
 #### 6. Step-by-Step Wizard (Right Panel)
 Each step preserves the original form design:
