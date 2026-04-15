@@ -362,19 +362,37 @@ export default function BrandContextPage() {
     if (hasFiles) {
       simulateParse(uploadedNames)
     } else {
-      // Text-only: contextual response based on whether files were already uploaded
+      // Text-only: contextual response based on state
       setTimeout(() => {
         const alreadyHasFiles = files.length > 0
+        const hasAtMention = text.includes("@")
+        let responseContent: string
+
+        if (hasAtMention && alreadyHasFiles) {
+          // User referenced a file — simulate updating a field
+          const mentionedFile = text.match(/@([\w._-]+)/)?.[1] || ""
+          if (zh) {
+            responseContent = `已根据 ${mentionedFile} 重新解析并更新了相关字段：\n\n✓ 品牌故事已更新 — 基于文件中的品牌叙事重新生成\n✓ 创始人寄语已补充\n\n你可以点击「步骤 2 Brand Story」查看修改后的内容 ✏️`
+          } else {
+            responseContent = `Re-parsed ${mentionedFile} and updated the relevant fields:\n\n✓ Brand Story updated — regenerated from the brand narrative in the file\n✓ Founder Note enriched with additional details\n\nClick "Step 2 Brand Story" to review the changes ✏️`
+          }
+          // Actually update the brand story to simulate the change
+          setBrandStory("We are a design-forward lifestyle brand rooted in sustainability and intentional living. Founded in 2022, we create everyday essentials that merge Scandinavian minimalism with modern functionality. Every product is responsibly sourced, thoughtfully designed in-house, and made to stand the test of time.")
+          setFounderNote("After a decade in the fashion industry, I saw a disconnect between style and responsibility. I started this brand to prove that beautiful, lasting products don't have to come at the planet's expense. Our mission is simple: make conscious living effortless. - Alex Chen, Founder & CEO")
+        } else if (alreadyHasFiles) {
+          responseContent = zh
+            ? "收到！你可以用 @ 引用已上传的文件来让我重新解析特定内容，或者直接在右侧表单里编辑对应的字段 ✏️"
+            : "Got it! Use @ to reference an uploaded file and tell me what to update — e.g. \"@brand_guide.pdf update the brand story\". Or edit the form directly ✏️"
+        } else {
+          responseContent = zh
+            ? "收到你的消息！上传品牌文件（PDF、PPT、图片等），Nohi 会帮你自动填充表单。\n\n你也可以直接在右侧表单里手动编辑 ✏️"
+            : "Got your message! Upload brand files (PDF, PPT, images, etc.) and Nohi will auto-fill the form for you.\n\nYou can also edit the form on the right directly ✏️"
+        }
+
         setMessages((prev) => [...prev, {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: alreadyHasFiles
-            ? (zh
-              ? "收到！你可以用 @ 引用已上传的文件，或者直接在右侧表单里编辑对应的字段 ✏️"
-              : "Got it! You can use @ to reference uploaded files, or edit the fields directly on the right ✏️")
-            : (zh
-              ? "收到你的消息！上传品牌文件（PDF、PPT、图片等），Nohi 会帮你自动填充表单。\n\n你也可以直接在右侧表单里手动编辑 ✏️"
-              : "Got your message! Upload brand files (PDF, PPT, images, etc.) and Nohi will auto-fill the form for you.\n\nYou can also edit the form on the right directly ✏️"),
+          content: responseContent,
           timestamp: new Date(),
         }])
       }, 800)
