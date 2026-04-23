@@ -354,6 +354,8 @@ interface PlatformItem {
   themes?: string[]        // AI-extracted tags
   status: ItemStatus
   agentAvailable: boolean  // separate from visibility
+  product?: string         // linked product (reviews)
+  category?: string        // product category (reviews)
 }
 
 interface PlatformData {
@@ -427,12 +429,31 @@ const mockPlatformsData: PlatformData[] = [
   {
     key: "reviews", connected: true, lastSyncedDisplay: "30m ago",
     items: [
-      { id: "rv1", title: "Absolutely love the fit and the fabric — will buy again", url: "https://site.com/reviews/1", author: "Sarah K.", publishedAt: "2d ago", rating: 5, verified: true, sentiment: "positive", themes: ["fit","fabric"], status: "approved", agentAvailable: true },
-      { id: "rv2", title: "Good quality but shipping took 2 weeks", url: "https://site.com/reviews/2", author: "Marcus T.", publishedAt: "4d ago", rating: 3, verified: true, sentiment: "neutral", themes: ["shipping"], status: "approved", agentAvailable: true },
-      { id: "rv3", title: "Perfect weight, soft on skin", url: "https://site.com/reviews/3", author: "Priya R.", publishedAt: "1w ago", rating: 5, verified: true, sentiment: "positive", themes: ["feel"], status: "approved", agentAvailable: true },
-      { id: "rv4", title: "Color was slightly different from photos", url: "https://site.com/reviews/4", author: "Jordan L.", publishedAt: "1w ago", rating: 2, verified: true, sentiment: "negative", themes: ["color"], status: "pending", agentAvailable: false },
-      { id: "rv5", title: "Great value — exceeded expectations", url: "https://site.com/reviews/5", author: "Emi K.", publishedAt: "2w ago", rating: 5, verified: false, sentiment: "positive", themes: ["value"], status: "approved", agentAvailable: true },
-      { id: "rv6", title: "Stitching came undone after two washes", url: "https://site.com/reviews/6", author: "Alex P.", publishedAt: "3w ago", rating: 1, verified: true, sentiment: "negative", themes: ["durability"], status: "pending", agentAvailable: false },
+      // Linen Shirt (Apparel)
+      { id: "rv1",  title: "Absolutely love the fit and the fabric — will buy again",                 url: "https://site.com/reviews/1",  author: "Sarah K.",  publishedAt: "2d ago",  rating: 5, verified: true,  sentiment: "positive", themes: ["fit","fabric"],      status: "approved", agentAvailable: true,  product: "Linen Shirt",        category: "Apparel" },
+      { id: "rv2",  title: "Good quality but shipping took 2 weeks",                                  url: "https://site.com/reviews/2",  author: "Marcus T.", publishedAt: "4d ago",  rating: 3, verified: true,  sentiment: "neutral",  themes: ["shipping"],          status: "approved", agentAvailable: true,  product: "Linen Shirt",        category: "Apparel" },
+      { id: "rv3",  title: "Runs a bit small — size up if between sizes",                             url: "https://site.com/reviews/3",  author: "Dana M.",   publishedAt: "3d ago",  rating: 4, verified: true,  sentiment: "neutral",  themes: ["sizing"],            status: "approved", agentAvailable: true,  product: "Linen Shirt",        category: "Apparel" },
+      { id: "rv4",  title: "Color faded after one wash — disappointed",                               url: "https://site.com/reviews/4",  author: "Jordan L.", publishedAt: "1w ago",  rating: 2, verified: true,  sentiment: "negative", themes: ["color","wash"],      status: "pending",  agentAvailable: false, product: "Linen Shirt",        category: "Apparel" },
+
+      // Wool Blanket (Home)
+      { id: "rv5",  title: "Perfect weight, soft on skin — my new favorite blanket",                  url: "https://site.com/reviews/5",  author: "Priya R.",  publishedAt: "1w ago",  rating: 5, verified: true,  sentiment: "positive", themes: ["feel","warmth"],     status: "approved", agentAvailable: true,  product: "Wool Blanket",       category: "Home" },
+      { id: "rv6",  title: "Smells strongly of wool for the first week",                              url: "https://site.com/reviews/6",  author: "Taylor J.", publishedAt: "2w ago",  rating: 3, verified: true,  sentiment: "neutral",  themes: ["smell"],             status: "approved", agentAvailable: true,  product: "Wool Blanket",       category: "Home" },
+      { id: "rv7",  title: "Started pilling within a month — not great quality",                      url: "https://site.com/reviews/7",  author: "Alex P.",   publishedAt: "3w ago",  rating: 1, verified: true,  sentiment: "negative", themes: ["durability"],        status: "pending",  agentAvailable: false, product: "Wool Blanket",       category: "Home" },
+
+      // Ceramic Mug (Home)
+      { id: "rv8",  title: "Beautiful glaze, feels great in hand",                                    url: "https://site.com/reviews/8",  author: "Emi K.",    publishedAt: "2w ago",  rating: 5, verified: false, sentiment: "positive", themes: ["design","feel"],     status: "approved", agentAvailable: true,  product: "Ceramic Mug",        category: "Home" },
+      { id: "rv9",  title: "Arrived with a chip on the rim",                                          url: "https://site.com/reviews/9",  author: "Rina S.",   publishedAt: "1w ago",  rating: 2, verified: true,  sentiment: "negative", themes: ["packaging"],         status: "pending",  agentAvailable: false, product: "Ceramic Mug",        category: "Home" },
+      { id: "rv10", title: "Microwave safe and dishwasher safe — exactly as described",               url: "https://site.com/reviews/10", author: "Chris L.",  publishedAt: "4d ago",  rating: 5, verified: true,  sentiment: "positive", themes: ["utility"],           status: "approved", agentAvailable: true,  product: "Ceramic Mug",        category: "Home" },
+
+      // Leather Tote (Accessories)
+      { id: "rv11", title: "Perfect everyday bag — compartments are thoughtful",                      url: "https://site.com/reviews/11", author: "Maya H.",   publishedAt: "5d ago",  rating: 5, verified: true,  sentiment: "positive", themes: ["design","utility"],  status: "approved", agentAvailable: true,  product: "Leather Tote",       category: "Accessories" },
+      { id: "rv12", title: "Strap started cracking after 3 months of daily use",                      url: "https://site.com/reviews/12", author: "Noah B.",   publishedAt: "2w ago",  rating: 2, verified: true,  sentiment: "negative", themes: ["durability"],        status: "pending",  agentAvailable: false, product: "Leather Tote",       category: "Accessories" },
+      { id: "rv13", title: "Color is even richer in person than online",                              url: "https://site.com/reviews/13", author: "Lucia V.",  publishedAt: "3d ago",  rating: 5, verified: true,  sentiment: "positive", themes: ["color"],             status: "approved", agentAvailable: true,  product: "Leather Tote",       category: "Accessories" },
+
+      // Face Serum (Beauty)
+      { id: "rv14", title: "Noticed smoother skin within two weeks",                                  url: "https://site.com/reviews/14", author: "Hannah Y.", publishedAt: "6d ago",  rating: 5, verified: true,  sentiment: "positive", themes: ["results"],           status: "approved", agentAvailable: true,  product: "Vitamin C Serum",    category: "Beauty" },
+      { id: "rv15", title: "Broke me out — might be sensitive to fragrance",                          url: "https://site.com/reviews/15", author: "Zoe A.",    publishedAt: "1w ago",  rating: 1, verified: true,  sentiment: "negative", themes: ["sensitivity"],       status: "pending",  agentAvailable: false, product: "Vitamin C Serum",    category: "Beauty" },
+      { id: "rv16", title: "Nice texture but pricey for the amount you get",                          url: "https://site.com/reviews/16", author: "Ivy R.",    publishedAt: "2w ago",  rating: 3, verified: true,  sentiment: "neutral",  themes: ["value","texture"],   status: "approved", agentAvailable: true,  product: "Vitamin C Serum",    category: "Beauty" },
     ],
   },
   {
@@ -624,6 +645,9 @@ export default function BrandContextPage() {
   const [activePlatform, setActivePlatform] = useState<PlatformKey | null>(null)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [statusFilter, setStatusFilter] = useState<"all" | ItemStatus>("all")
+  const [sentimentFilter, setSentimentFilter] = useState<"all" | Sentiment>("all")
+  const [productFilter, setProductFilter] = useState<string>("all")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [reviewsAutoPublishMin, setReviewsAutoPublishMin] = useState<number>(4)
   const [reviewsHideFlagged, setReviewsHideFlagged] = useState<boolean>(true)
   const [linkInput, setLinkInput] = useState("")
@@ -1583,16 +1607,28 @@ export default function BrandContextPage() {
                     const p = getPlatform(activePlatform)!
                     const meta = platformMetas.find((m) => m.key === activePlatform)!
                     const m = computeMetrics(p)
-                    const visibleItems = p.items.filter((it) => statusFilter === "all" || it.status === statusFilter)
+                    const isReviews = meta.kind === "reviews"
+                    const visibleItems = p.items.filter((it) => {
+                      if (statusFilter !== "all" && it.status !== statusFilter) return false
+                      if (sentimentFilter !== "all" && it.sentiment !== sentimentFilter) return false
+                      if (isReviews && productFilter !== "all" && it.product !== productFilter) return false
+                      if (isReviews && categoryFilter !== "all" && it.category !== categoryFilter) return false
+                      return true
+                    })
                     const visibleIds = visibleItems.map((i) => i.id)
                     const selectedInView = visibleIds.filter((id) => selectedItemIds.has(id))
-                    const isReviews = meta.kind === "reviews"
+                    const reviewProducts = isReviews
+                      ? Array.from(new Set(p.items.map((i) => i.product).filter((x): x is string => !!x)))
+                      : []
+                    const reviewCategories = isReviews
+                      ? Array.from(new Set(p.items.map((i) => i.category).filter((x): x is string => !!x)))
+                      : []
                     return (
                       <>
                         {/* Header: back + platform + metrics */}
                         <div className="flex flex-col gap-3">
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" className="h-7 rounded-full text-xs px-2" onClick={() => { setActivePlatform(null); setSelectedItemIds(new Set()); setStatusFilter("all") }}>
+                            <Button variant="ghost" size="sm" className="h-7 rounded-full text-xs px-2" onClick={() => { setActivePlatform(null); setSelectedItemIds(new Set()); setStatusFilter("all"); setSentimentFilter("all"); setProductFilter("all"); setCategoryFilter("all") }}>
                               <ChevronLeft className="size-3.5 mr-1" />{zh ? "全部平台" : "All platforms"}
                             </Button>
                             <div className={cn("size-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white", meta.color)}>
@@ -1659,7 +1695,93 @@ export default function BrandContextPage() {
                           )}
                         </div>
 
-                        {/* Bulk action bar + filter */}
+                        {/* Filters: sentiment + product + category (reviews) */}
+                        <div className="flex flex-col gap-2">
+                          {/* Sentiment filter (all platforms with sentiment) */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
+                              {zh ? "情感" : "Sentiment"}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {(["all", "positive", "neutral", "negative"] as const).map((s) => (
+                                <button
+                                  key={s}
+                                  onClick={() => { setSentimentFilter(s); setSelectedItemIds(new Set()) }}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors border",
+                                    sentimentFilter === s
+                                      ? s === "positive" ? "bg-emerald-100 border-emerald-200 text-emerald-700"
+                                      : s === "negative" ? "bg-rose-100 border-rose-200 text-rose-700"
+                                      : s === "neutral"  ? "bg-slate-100 border-slate-200 text-slate-700"
+                                      :                    "bg-foreground text-background border-foreground"
+                                      : "bg-secondary border-border text-muted-foreground hover:bg-secondary/80"
+                                  )}
+                                >
+                                  {s === "all" ? (zh ? "全部" : "All")
+                                    : s === "positive" ? (zh ? "正面" : "Positive")
+                                    : s === "neutral"  ? (zh ? "中性" : "Neutral")
+                                    : (zh ? "负面" : "Negative")}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Reviews-only: product + category */}
+                          {isReviews && (reviewProducts.length > 0 || reviewCategories.length > 0) && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {reviewCategories.length > 0 && (
+                                <>
+                                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
+                                    {zh ? "品类" : "Category"}
+                                  </span>
+                                  <select
+                                    value={categoryFilter}
+                                    onChange={(e) => { setCategoryFilter(e.target.value); setProductFilter("all"); setSelectedItemIds(new Set()) }}
+                                    className="bg-secondary border border-border rounded-md px-2 py-0.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                  >
+                                    <option value="all">{zh ? "全部品类" : "All categories"}</option>
+                                    {reviewCategories.map((c) => (
+                                      <option key={c} value={c}>{c}</option>
+                                    ))}
+                                  </select>
+                                </>
+                              )}
+                              {reviewProducts.length > 0 && (
+                                <>
+                                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium ml-2">
+                                    {zh ? "商品" : "Product"}
+                                  </span>
+                                  <select
+                                    value={productFilter}
+                                    onChange={(e) => { setProductFilter(e.target.value); setSelectedItemIds(new Set()) }}
+                                    className="bg-secondary border border-border rounded-md px-2 py-0.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring max-w-[180px]"
+                                  >
+                                    <option value="all">{zh ? "全部商品" : "All products"}</option>
+                                    {reviewProducts
+                                      .filter((prod) => {
+                                        if (categoryFilter === "all") return true
+                                        const cat = p.items.find((i) => i.product === prod)?.category
+                                        return cat === categoryFilter
+                                      })
+                                      .map((prod) => (
+                                        <option key={prod} value={prod}>{prod}</option>
+                                      ))}
+                                  </select>
+                                </>
+                              )}
+                              {(productFilter !== "all" || categoryFilter !== "all" || sentimentFilter !== "all") && (
+                                <button
+                                  onClick={() => { setProductFilter("all"); setCategoryFilter("all"); setSentimentFilter("all") }}
+                                  className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+                                >
+                                  {zh ? "清除筛选" : "Clear filters"}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Bulk action bar + status filter */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <div className="flex items-center gap-1">
                             {(["all", "pending", "approved", "rejected"] as const).map((s) => (
@@ -1748,6 +1870,26 @@ export default function BrandContextPage() {
                                         )}
                                       </div>
                                       <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+                                        {it.product && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setProductFilter(it.product!); setSelectedItemIds(new Set()) }}
+                                            className="px-1.5 py-0.5 rounded bg-foreground/5 text-foreground font-medium text-[10px] hover:bg-foreground/10"
+                                            title={zh ? "按此商品筛选" : "Filter by this product"}
+                                          >
+                                            {it.product}
+                                          </button>
+                                        )}
+                                        {it.category && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setCategoryFilter(it.category!); setProductFilter("all"); setSelectedItemIds(new Set()) }}
+                                            className="px-1.5 py-0.5 rounded border border-border text-[10px] hover:bg-secondary"
+                                            title={zh ? "按此品类筛选" : "Filter by this category"}
+                                          >
+                                            {it.category}
+                                          </button>
+                                        )}
                                         {it.author && <span>{it.author}</span>}
                                         <span className="tabular-nums">{it.publishedAt}</span>
                                         {typeof it.likes === "number" && <span className="tabular-nums">♡ {it.likes.toLocaleString()}</span>}
