@@ -141,6 +141,14 @@ const styleMore = [
   "Handcrafted", "Art Deco", "Brutalist", "Cottagecore", "Y2K", "Grunge",
 ]
 
+const toneDefaults = [
+  "Warm", "Witty", "Authoritative", "Playful", "Serene", "Confident",
+  "Friendly", "Professional", "Caring", "Bold", "Sophisticated", "Down-to-earth",
+]
+const toneMore = [
+  "Cheeky", "Reverent", "Poetic", "Direct", "Quirky", "Encouraging", "Aspirational", "Technical",
+]
+
 const excludedAudienceDefaults = [
   "Minors", "Children Under 13", "Pregnant Women", "Elderly", "Medical Patients",
   "Allergy Sensitive", "Visually Impaired", "Hearing Impaired", "Mental Health Sensitive",
@@ -194,6 +202,125 @@ const SENSITIVITY_CONFIG: Record<RuleSensitivity, { label: { en: string; zh: str
   medium: { label: { en: "Medium", zh: "中" }, color: "text-amber-600",       bg: "bg-amber-100 border-amber-200" },
   low:    { label: { en: "Low",    zh: "低" }, color: "text-muted-foreground", bg: "bg-secondary border-border" },
 }
+
+interface GuardrailTemplate {
+  id: string
+  label: { en: string; zh: string }
+  description: { en: string; zh: string }
+  rules: Partial<Record<RuleCategory, GuardrailRule[]>>
+}
+
+const GUARDRAIL_TEMPLATES: GuardrailTemplate[] = [
+  {
+    id: "beauty",
+    label: { en: "Beauty & Skincare",         zh: "美妆护肤" },
+    description: { en: "FDA cosmetic claims, sensitivity, allergies.",  zh: "FDA 化妆品声明、敏感源、过敏原规避。" },
+    rules: {
+      "no-mention": [
+        { id: "bt-nm-1", text: "Medical or therapeutic skin treatment claims (cures, heals, medicates)", sensitivity: "high" },
+        { id: "bt-nm-2", text: "Guaranteed anti-aging or skin lightening results",                       sensitivity: "high" },
+      ],
+      "no-audience": [
+        { id: "bt-na-1", text: "Individuals with known allergies to active ingredients", sensitivity: "high" },
+        { id: "bt-na-2", text: "Pregnant or nursing users (for retinoid products)",      sensitivity: "high" },
+      ],
+      "compliance": [
+        { id: "bt-cp-1", text: "Include 'for external use only' disclaimer when relevant", sensitivity: "medium" },
+        { id: "bt-cp-2", text: "Recommend patch test before first use",                    sensitivity: "medium" },
+      ],
+    },
+  },
+  {
+    id: "supplements",
+    label: { en: "Supplements & Wellness",    zh: "保健品与健康" },
+    description: { en: "Avoid medical claims, enforce disclaimers.",     zh: "避免医疗声明，强制免责说明。" },
+    rules: {
+      "no-mention": [
+        { id: "sp-nm-1", text: "Cure, treat, or prevent any disease",                 sensitivity: "high" },
+        { id: "sp-nm-2", text: "Specific weight loss amounts or timeframes",          sensitivity: "high" },
+        { id: "sp-nm-3", text: "Replacement for prescribed medication",               sensitivity: "high" },
+      ],
+      "no-audience": [
+        { id: "sp-na-1", text: "Users under 18 without guardian",                     sensitivity: "high" },
+        { id: "sp-na-2", text: "Pregnant or nursing individuals",                     sensitivity: "high" },
+      ],
+      "compliance": [
+        { id: "sp-cp-1", text: "'These statements have not been evaluated by the FDA' disclaimer", sensitivity: "high" },
+        { id: "sp-cp-2", text: "'Consult your doctor before use' when discussing conditions",      sensitivity: "high" },
+      ],
+    },
+  },
+  {
+    id: "kids",
+    label: { en: "Kids & Baby",               zh: "儿童与婴幼儿" },
+    description: { en: "Age-gating, choking hazards, safety standards.", zh: "年龄限制、窒息风险、安全标准。" },
+    rules: {
+      "no-mention": [
+        { id: "kd-nm-1", text: "Unsupervised use by children under the recommended age", sensitivity: "high" },
+      ],
+      "no-audience": [
+        { id: "kd-na-1", text: "Children under age rating of the product",            sensitivity: "high" },
+      ],
+      "compliance": [
+        { id: "kd-cp-1", text: "Include age-appropriate warning ('Ages 3+')",         sensitivity: "high" },
+        { id: "kd-cp-2", text: "Choking-hazard notice for small parts",               sensitivity: "high" },
+        { id: "kd-cp-3", text: "CPSIA / EN 71 compliance mention where asked",        sensitivity: "medium" },
+      ],
+    },
+  },
+  {
+    id: "medical",
+    label: { en: "Medical Devices / OTC",     zh: "医疗器械 / OTC" },
+    description: { en: "Regulated: avoid diagnosis/treatment claims.",   zh: "受监管：避免诊疗声明。" },
+    rules: {
+      "no-mention": [
+        { id: "md-nm-1", text: "Diagnosing, curing, or treating specific conditions", sensitivity: "high" },
+        { id: "md-nm-2", text: "Comparisons to prescription-grade products",           sensitivity: "high" },
+      ],
+      "no-audience": [
+        { id: "md-na-1", text: "Users with implanted medical devices (for EMS / TENS)", sensitivity: "high" },
+      ],
+      "compliance": [
+        { id: "md-cp-1", text: "'Not intended to diagnose, treat, cure, or prevent any disease'", sensitivity: "high" },
+        { id: "md-cp-2", text: "'Consult a healthcare professional' on medical questions",        sensitivity: "high" },
+      ],
+    },
+  },
+  {
+    id: "food",
+    label: { en: "Food & Beverage",           zh: "食品与饮料" },
+    description: { en: "Allergens, dietary claims, expiration.",          zh: "过敏原、饮食声明、保质期。" },
+    rules: {
+      "no-mention": [
+        { id: "fd-nm-1", text: "Unverified health benefits or weight loss claims",    sensitivity: "high" },
+      ],
+      "no-audience": [
+        { id: "fd-na-1", text: "Individuals with allergies to listed ingredients",    sensitivity: "high" },
+      ],
+      "compliance": [
+        { id: "fd-cp-1", text: "Declare major allergens (milk, eggs, peanuts, tree nuts, soy, wheat, fish, shellfish)", sensitivity: "high" },
+        { id: "fd-cp-2", text: "Mention 'best by' date when asked about freshness",   sensitivity: "medium" },
+      ],
+    },
+  },
+  {
+    id: "apparel",
+    label: { en: "Apparel & Accessories",     zh: "服装与配饰" },
+    description: { en: "Sizing, materials, care instructions.",           zh: "尺码、材质、护理说明。" },
+    rules: {
+      "no-mention": [
+        { id: "ap-nm-1", text: "Guaranteed fit without the customer's measurements",   sensitivity: "medium" },
+      ],
+      "no-compare": [
+        { id: "ap-nc-1", text: "Direct competitor brands by name",                     sensitivity: "high" },
+      ],
+      "compliance": [
+        { id: "ap-cp-1", text: "State country of manufacture when asked",              sensitivity: "low" },
+        { id: "ap-cp-2", text: "Include care instructions for delicate fabrics",       sensitivity: "medium" },
+      ],
+    },
+  },
+]
 
 const GUARDRAIL_CATEGORIES: GuardrailCategoryDef[] = [
   {
@@ -624,14 +751,19 @@ export default function BrandContextPage() {
   // Brand Story
   const [brandStory, setBrandStory] = useState("")
   const [founderNote, setFounderNote] = useState("")
+  const [pillars, setPillars] = useState<{ id: string; title: string; detail: string }[]>([])
+  const [objections, setObjections] = useState<{ id: string; concern: string; response: string }[]>([])
   // Visual Style
   const [styleTags, setStyleTags] = useState<string[]>([])
+  const [brandColors, setBrandColors] = useState<string[]>(["#1A1A1A", "#F5F1E8", "#C67A3A"])
+  const [toneTags, setToneTags] = useState<string[]>([])
   // Guardrails (structured — 4 categories with sensitivity)
   const [rulesByCategory, setRulesByCategory] = useState<Record<RuleCategory, GuardrailRule[]>>(() => {
     const map = {} as Record<RuleCategory, GuardrailRule[]>
     GUARDRAIL_CATEGORIES.forEach((c) => { map[c.id] = [...c.defaultRules] })
     return map
   })
+  const [appliedTemplateIds, setAppliedTemplateIds] = useState<string[]>([])
   // Fulfillment
   const [processingTime, setProcessingTime] = useState("")
   const [onTimeRate, setOnTimeRate] = useState("")
@@ -647,6 +779,7 @@ export default function BrandContextPage() {
   const [cloneImported, setCloneImported] = useState(false)
   // Gap tracking — true after any file parse, so empty sections become "red gap"
   const [hasAttemptedParse, setHasAttemptedParse] = useState(false)
+  const [healthDetailOpen, setHealthDetailOpen] = useState(false)
   // Reviews auto-sync
   const [reviewsAutoSync, setReviewsAutoSync] = useState(true)
   const [reviewsSyncFreq, setReviewsSyncFreq] = useState<"daily" | "weekly" | "monthly">("weekly")
@@ -664,6 +797,7 @@ export default function BrandContextPage() {
   const [reviewsHideFlagged, setReviewsHideFlagged] = useState<boolean>(true)
   const [linkInput, setLinkInput] = useState("")
   const [linkAnalyzing, setLinkAnalyzing] = useState(false)
+  const [showNegativeInsights, setShowNegativeInsights] = useState(true)
 
   // Show full guide card when no messages exist (user hasn't interacted yet)
   const hasInteracted = messages.length > 0
@@ -707,7 +841,19 @@ export default function BrandContextPage() {
       setIntentTags(["Sustainable Choice", "Premium Quality", "Everyday Essential"])
       setBrandStory("We started with a simple idea: everyday essentials should look and feel intentional. Born in 2022, our brand combines clean design with sustainable materials, creating products that fit naturally into modern life. Every piece is designed in-house, with a focus on quality over quantity.")
       setFounderNote("I launched this brand after years in the fashion industry feeling frustrated by the gap between fast fashion and inaccessible luxury. I believe great design should be available to everyone, made responsibly, and built to last. - Alex Chen, Founder")
+      setPillars([
+        { id: "p1", title: "Sustainable materials",     detail: "We source organic cotton, recycled polyester, and plant-based dyes — never virgin synthetics." },
+        { id: "p2", title: "Designed in-house",         detail: "Every piece is drafted by our in-house design team in Copenhagen and made-to-order to reduce waste." },
+        { id: "p3", title: "Lifetime repair promise",   detail: "We repair any garment for life — just ship it back, we'll mend it, and cover return shipping." },
+      ])
+      setObjections([
+        { id: "o1", concern: "Why is this more expensive than fast fashion?",     response: "Because we pay fair wages, use higher-quality fabrics, and size production to actual demand — no markdowns, no waste." },
+        { id: "o2", concern: "How long does shipping take internationally?",       response: "EU: 3-5 days. US: 5-7 days. APAC: 7-10 days. We're transparent about cutoffs during peak season." },
+        { id: "o3", concern: "What if the size doesn't fit?",                      response: "Free exchanges within 30 days. Our sizing guide is backed by 10,000+ customer fit data points." },
+      ])
       setStyleTags(["Minimalist", "Clean Lines", "Sustainable", "Scandinavian"])
+      setToneTags(["Warm", "Down-to-earth", "Confident"])
+      setBrandColors(["#1A1A1A", "#F5F1E8", "#C67A3A", "#6B7763"])
       // Guardrails: default categories auto-populated — add a parsed compliance hint
       setRulesByCategory((prev) => ({
         ...prev,
@@ -975,11 +1121,15 @@ export default function BrandContextPage() {
         return { key: catId, label: cat.label }
       }),
     "visual-style": [
-      ...(styleTags.length === 0 ? [{ key: "style", label: { en: "Style Tags", zh: "风格标签" } }] : []),
+      ...(styleTags.length === 0   ? [{ key: "style",  label: { en: "Style Tags",      zh: "风格标签" } }] : []),
+      ...(toneTags.length === 0    ? [{ key: "tone",   label: { en: "Tone of Voice",   zh: "语调风格" } }] : []),
+      ...(brandColors.length < 2   ? [{ key: "colors", label: { en: "Brand Colors (≥2)", zh: "品牌色板（≥2 色）" } }] : []),
     ],
     "brand-story": [
-      ...(brandStory.trim().length === 0 ? [{ key: "story",  label: { en: "Brand Story",  zh: "品牌故事" } }] : []),
-      ...(founderNote.trim().length === 0 ? [{ key: "founder", label: { en: "Founder Note", zh: "创始人寄语" } }] : []),
+      ...(brandStory.trim().length === 0  ? [{ key: "story",     label: { en: "Brand Story",          zh: "品牌故事" } }] : []),
+      ...(founderNote.trim().length === 0 ? [{ key: "founder",   label: { en: "Founder Note",         zh: "创始人寄语" } }] : []),
+      ...(pillars.length === 0            ? [{ key: "pillars",   label: { en: "Key Messaging Pillars (≥2)", zh: "品牌核心主张（≥2 条）" } }] : []),
+      ...(objections.length === 0         ? [{ key: "objections", label: { en: "Objection Handling (≥1)",   zh: "顾虑应对（≥1 条）" } }] : []),
     ],
     "posts-ugc": (() => {
       const gaps: { key: string; label: { en: string; zh: string } }[] = []
@@ -1010,8 +1160,8 @@ export default function BrandContextPage() {
     switch (s.key) {
       case "details": totalFields = 6; filledFields = 6 - missing.length; break
       case "guardrails": totalFields = 4; filledFields = 4 - missing.length; break
-      case "visual-style": totalFields = 1; filledFields = 1 - missing.length; break
-      case "brand-story": totalFields = 2; filledFields = 2 - missing.length; break
+      case "visual-style": totalFields = 3; filledFields = 3 - missing.length; break
+      case "brand-story": totalFields = 4; filledFields = 4 - missing.length; break
       case "posts-ugc": totalFields = 3; filledFields = 3 - missing.length; break
       case "fulfillment": totalFields = 4; filledFields = 4 - missing.length; break
       case "clone": totalFields = 1; filledFields = 1 - missing.length; break
@@ -1044,23 +1194,34 @@ export default function BrandContextPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* ── Brand Health Score banner ── */}
-      <div className="shrink-0 border-b border-border px-6 py-3 bg-background">
+      <div className="shrink-0 border-b border-border px-6 py-3 bg-background relative">
         <div className="flex items-center gap-3">
-          <span className={cn("text-2xl font-bold tabular-nums tracking-tight leading-none", scoreColor)}>{healthScore}</span>
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-foreground">
-                {zh ? "品牌健康分" : "Brand Health Score"}
+          <button
+            onClick={() => setHealthDetailOpen((v) => !v)}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <span className={cn("text-2xl font-bold tabular-nums tracking-tight leading-none", scoreColor)}>{healthScore}</span>
+            <div className="flex flex-col min-w-0 items-start">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">
+                  {zh ? "品牌健康分" : "Brand Health Score"}
+                </span>
+                <TrendingUp className="size-3 text-muted-foreground" />
+                <ChevronRight className={cn("size-3 text-muted-foreground transition-transform", healthDetailOpen && "rotate-90")} />
+              </div>
+              <span className="text-[10px] text-muted-foreground text-left">
+                {zh ? `已配置 ${completedSteps} / ${totalSteps} 个模块` : `${completedSteps} of ${totalSteps} sections configured`}
+                {healthScore < 70
+                  ? (zh ? " · agent 上线最低需 70 分" : " · agents need ≥ 70 to go live")
+                  : (zh ? " · 已满足 agent 上线标准 ✓" : " · meets agent-live threshold ✓")}
               </span>
-              <TrendingUp className="size-3 text-muted-foreground" />
             </div>
-            <span className="text-[10px] text-muted-foreground">
-              {zh ? `已配置 ${completedSteps} / ${totalSteps} 个模块` : `${completedSteps} of ${totalSteps} sections configured`}
-            </span>
-          </div>
-          {/* Progress bar */}
-          <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden mx-2 min-w-[80px] max-w-[240px]">
+          </button>
+          {/* Progress bar with 70 threshold marker */}
+          <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden mx-2 min-w-[80px] max-w-[240px] relative">
             <div className={cn("h-full rounded-full transition-all duration-500", barColor)} style={{ width: `${healthScore}%` }} />
+            {/* 70 threshold tick */}
+            <div className="absolute top-0 bottom-0 w-0.5 bg-foreground/40" style={{ left: "70%" }} title="Agent-live threshold: 70" />
           </div>
           {/* Boost suggestions */}
           <div className="flex items-center gap-1.5 flex-wrap ml-auto">
@@ -1077,6 +1238,74 @@ export default function BrandContextPage() {
             ))}
           </div>
         </div>
+
+        {/* Detail popover */}
+        {healthDetailOpen && (
+          <div className="absolute left-6 right-6 top-full mt-2 rounded-xl border border-border bg-background shadow-lg p-4 z-20">
+            <div className="flex items-start gap-4">
+              <div className="flex flex-col gap-1 shrink-0">
+                <span className={cn("text-4xl font-bold tabular-nums tracking-tight leading-none", scoreColor)}>{healthScore}</span>
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {zh ? "行业均值 78" : "Category avg 78"}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {healthScore >= 70
+                    ? (zh ? "✅ 达到上线标准" : "✅ Agent-live")
+                    : (zh ? `⚠ 还差 ${70 - healthScore} 分` : `⚠ ${70 - healthScore} points to live`)}
+                </span>
+              </div>
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                {stepDefs.map((s, i) => {
+                  const state = stepStates[s.key]
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => { setCurrentStep(i); setHealthDetailOpen(false) }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                    >
+                      <span className={cn(
+                        "size-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold",
+                        state === "complete" ? "bg-emerald-500 text-white"
+                        : state === "gap"    ? "bg-red-500 text-white"
+                        : state === "partial" ? "bg-amber-500 text-white"
+                        :                       "bg-muted-foreground/20 text-muted-foreground"
+                      )}>
+                        {state === "complete" ? <Check className="size-3" /> : state === "gap" ? <AlertTriangle className="size-3" /> : i + 1}
+                      </span>
+                      <span className="text-xs text-foreground flex-1 truncate">{zh ? s.title.zh : s.title.en}</span>
+                      <span className={cn(
+                        "text-[10px] font-medium shrink-0",
+                        state === "complete" ? "text-emerald-600"
+                        : state === "gap"    ? "text-red-600"
+                        : state === "partial" ? "text-amber-600"
+                        :                       "text-muted-foreground"
+                      )}>
+                        {state === "complete" ? (zh ? "已完成" : "Complete")
+                          : state === "gap"     ? (zh ? "有缺口" : "Gap")
+                          : state === "partial" ? (zh ? "部分完成" : "Partial")
+                          :                       (zh ? "未开始" : "Empty")}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-border flex items-center gap-2">
+              <Info className="size-3 text-muted-foreground" />
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                {zh
+                  ? "每个已完成的模块贡献 ~14 分。「Clone」为可选，不计入门槛，但完成后会额外 +10%。"
+                  : "Each completed section adds ~14 points. \"Clone\" is optional — it doesn't count toward the 70 threshold but unlocks a +10% confidence boost."}
+              </p>
+            </div>
+            <button
+              onClick={() => setHealthDetailOpen(false)}
+              className="absolute top-2 right-2 size-6 rounded-full hover:bg-secondary flex items-center justify-center text-muted-foreground"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Step progress (with gap/partial/complete states) ── */}
@@ -1504,6 +1733,105 @@ export default function BrandContextPage() {
                       </div>
                     </div>
                   </FormSection>
+
+                  {/* Key Messaging Pillars */}
+                  <FormSection
+                    title={zh ? "品牌核心主张" : "Key Messaging Pillars"}
+                    description={zh ? "2-4 条，agent 在回答中会反复引用的核心主张。" : "2–4 core claims agents will reference in every relevant answer."}
+                  >
+                    <div className="flex flex-col gap-2">
+                      {pillars.map((p, idx) => (
+                        <div key={p.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1 group">
+                          <div className="flex items-center gap-2">
+                            <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-[10px] font-bold shrink-0">{idx + 1}</span>
+                            <input
+                              type="text"
+                              value={p.title}
+                              onChange={(e) => setPillars((prev) => prev.map((x) => x.id === p.id ? { ...x, title: e.target.value } : x))}
+                              placeholder={zh ? "主张标题（e.g. 100% 有机棉）" : "Pillar title (e.g. 100% organic cotton)"}
+                              className="flex-1 bg-transparent text-xs font-semibold text-foreground focus:outline-none placeholder:text-muted-foreground"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setPillars((prev) => prev.filter((x) => x.id !== p.id))}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </div>
+                          <Textarea
+                            value={p.detail}
+                            onChange={(e) => setPillars((prev) => prev.map((x) => x.id === p.id ? { ...x, detail: e.target.value } : x))}
+                            rows={2}
+                            placeholder={zh ? "简短说明（agent 回答时会用到）" : "Short description (agents will quote this in answers)"}
+                            className="rounded-md bg-background border-border text-[11px] resize-none"
+                          />
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setPillars((prev) => [...prev, { id: `p-${Date.now()}`, title: "", detail: "" }])}
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-md border border-dashed border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+                      >
+                        <Plus className="size-3" />
+                        {zh ? "添加主张" : "Add pillar"}
+                      </button>
+                    </div>
+                  </FormSection>
+
+                  {/* Objection Handling */}
+                  <FormSection
+                    title={zh ? "顾虑应对" : "Objection Handling"}
+                    description={zh ? "常见顾虑 → 品牌标准回答，agent 遇到类似问题会参考。" : "Common concerns and how the brand responds — agents mirror this."}
+                  >
+                    <div className="flex flex-col gap-2">
+                      {objections.map((o) => (
+                        <div key={o.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1.5 group">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">
+                                {zh ? "顾客顾虑" : "Customer concern"}
+                              </div>
+                              <input
+                                type="text"
+                                value={o.concern}
+                                onChange={(e) => setObjections((prev) => prev.map((x) => x.id === o.id ? { ...x, concern: e.target.value } : x))}
+                                placeholder={zh ? "e.g. 为什么比其他品牌贵？" : "e.g. Why is this more expensive than other brands?"}
+                                className="w-full bg-transparent text-xs font-medium text-foreground focus:outline-none placeholder:text-muted-foreground"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setObjections((prev) => prev.filter((x) => x.id !== o.id))}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 self-start"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </div>
+                          <div>
+                            <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">
+                              {zh ? "品牌回答" : "Brand response"}
+                            </div>
+                            <Textarea
+                              value={o.response}
+                              onChange={(e) => setObjections((prev) => prev.map((x) => x.id === o.id ? { ...x, response: e.target.value } : x))}
+                              rows={2}
+                              placeholder={zh ? "品牌标准回答..." : "Standard brand response..."}
+                              className="rounded-md bg-background border-border text-[11px] resize-none"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setObjections((prev) => [...prev, { id: `o-${Date.now()}`, concern: "", response: "" }])}
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-md border border-dashed border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+                      >
+                        <Plus className="size-3" />
+                        {zh ? "添加顾虑" : "Add concern"}
+                      </button>
+                    </div>
+                  </FormSection>
                 </>
               )}
 
@@ -1514,16 +1842,90 @@ export default function BrandContextPage() {
                     <TagInput allTags={styleDefaults} selected={styleTags} onSelectedChange={setStyleTags} moreTags={styleMore} placeholder={zh ? "输入自定义风格标签..." : "Type a custom style tag..."} />
                   </FormSection>
 
-                  <FormSection title={zh ? "风格预览" : "Style Preview"} description={zh ? "已选风格标签。" : "Selected style tags."}>
-                    <div className="rounded-xl bg-secondary/50 p-4">
-                      {styleTags.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {styleTags.map((tag) => (
-                            <span key={tag} className="px-2.5 py-1 rounded-md bg-foreground text-background text-[11px] font-medium">{tag}</span>
-                          ))}
+                  <FormSection
+                    title={zh ? "品牌色板" : "Brand Colors"}
+                    description={zh ? "主要品牌色，agent 在视觉内容建议中会优先使用。" : "Primary brand palette — agents prefer these colors when suggesting visual content."}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {brandColors.map((color, i) => (
+                        <div key={i} className="relative group">
+                          <input
+                            type="color"
+                            value={color}
+                            onChange={(e) => setBrandColors((prev) => prev.map((c, j) => j === i ? e.target.value : c))}
+                            className="size-10 rounded-xl border border-border cursor-pointer overflow-hidden"
+                            title={color.toUpperCase()}
+                          />
+                          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-mono tabular-nums text-muted-foreground whitespace-nowrap">
+                            {color.toUpperCase()}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setBrandColors((prev) => prev.filter((_, j) => j !== i))}
+                            className="absolute -top-1 -right-1 size-4 rounded-full bg-foreground text-background opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                            title={zh ? "移除" : "Remove"}
+                          >
+                            <X className="size-2.5" />
+                          </button>
                         </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setBrandColors((prev) => [...prev, "#CCCCCC"])}
+                        className="size-10 rounded-xl border border-dashed border-border hover:border-foreground/40 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                        title={zh ? "添加颜色" : "Add color"}
+                      >
+                        <Plus className="size-4" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-3">
+                      {zh ? "提示：上传 Logo 或品牌手册后，Nohi 会自动提取主色。" : "Tip: Upload your logo or brand guidelines and Nohi will auto-extract the palette."}
+                    </p>
+                  </FormSection>
+
+                  <FormSection
+                    title={zh ? "语调风格" : "Tone of Voice"}
+                    description={zh ? "3-5 个形容词，描述品牌说话的感觉。" : "3–5 adjectives describing how your brand sounds."}
+                  >
+                    <TagInput allTags={toneDefaults} selected={toneTags} onSelectedChange={setToneTags} moreTags={toneMore} placeholder={zh ? "输入自定义语调标签..." : "Type a custom tone tag..."} />
+                  </FormSection>
+
+                  {/* Visual preview */}
+                  <FormSection title={zh ? "风格预览" : "Style Preview"} description={zh ? "已选风格与语调。" : "Selected style and tone."}>
+                    <div
+                      className="rounded-xl p-5 flex flex-col gap-3 border"
+                      style={{
+                        background: brandColors[1] || "#F5F1E8",
+                        borderColor: brandColors[0] || "#1A1A1A",
+                        color: brandColors[0] || "#1A1A1A",
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        {brandColors.slice(0, 5).map((c, i) => (
+                          <div key={i} className="size-5 rounded-full border border-white/40" style={{ background: c }} />
+                        ))}
+                      </div>
+                      {(styleTags.length > 0 || toneTags.length > 0) ? (
+                        <>
+                          <div className="flex flex-wrap gap-1.5">
+                            {styleTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2 py-0.5 rounded-md text-[11px] font-medium"
+                                style={{ background: brandColors[2] || "#1A1A1A", color: brandColors[1] || "#F5F1E8" }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          {toneTags.length > 0 && (
+                            <p className="text-[11px] italic opacity-80">
+                              {zh ? "语调: " : "Voice: "}{toneTags.join(" · ")}
+                            </p>
+                          )}
+                        </>
                       ) : (
-                        <p className="text-xs text-muted-foreground">{zh ? "还没有选择风格标签。" : "No style tags selected yet."}</p>
+                        <p className="text-xs opacity-60">{zh ? "还没有风格或语调标签。" : "No style or tone tags yet."}</p>
                       )}
                     </div>
                   </FormSection>
@@ -1534,8 +1936,101 @@ export default function BrandContextPage() {
               {step.key === "guardrails" && (() => {
                 const totalRules = Object.values(rulesByCategory).reduce((a, b) => a + b.length, 0)
                 const highRules = Object.values(rulesByCategory).flat().filter((r) => r.sensitivity === "high").length
+
+                // Audience conflict: detect if any Primary Audience is also in Excluded Audiences
+                const excludedAudienceRules = rulesByCategory["no-audience"].map((r) => r.text.toLowerCase())
+                const audienceConflicts = audienceTags.filter((tag) =>
+                  excludedAudienceRules.some((txt) => txt.includes(tag.toLowerCase()) || tag.toLowerCase().includes(txt.split(" ")[0]))
+                )
                 return (
                   <>
+                    {/* Industry template library */}
+                    <div className="rounded-xl border border-border bg-background p-3 flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="size-3.5 text-blue-500" />
+                          <span className="text-[11px] font-semibold text-foreground">
+                            {zh ? "行业模板库" : "Industry templates"}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          {zh ? "一键套用常见行业的合规规则" : "One-click compliance rules for common industries"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {GUARDRAIL_TEMPLATES.map((tpl) => {
+                          const applied = appliedTemplateIds.includes(tpl.id)
+                          return (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              onClick={() => {
+                                if (applied) {
+                                  // Remove this template's rules
+                                  setRulesByCategory((prev) => {
+                                    const next = { ...prev }
+                                    Object.entries(tpl.rules).forEach(([catId, rules]) => {
+                                      const key = catId as RuleCategory
+                                      const idsToRemove = rules!.map((r) => r.id)
+                                      next[key] = prev[key].filter((r) => !idsToRemove.includes(r.id))
+                                    })
+                                    return next
+                                  })
+                                  setAppliedTemplateIds((prev) => prev.filter((id) => id !== tpl.id))
+                                } else {
+                                  // Append template's rules (de-dupe by id)
+                                  setRulesByCategory((prev) => {
+                                    const next = { ...prev }
+                                    Object.entries(tpl.rules).forEach(([catId, rules]) => {
+                                      const key = catId as RuleCategory
+                                      const existingIds = new Set(prev[key].map((r) => r.id))
+                                      const toAdd = rules!.filter((r) => !existingIds.has(r.id))
+                                      next[key] = [...prev[key], ...toAdd]
+                                    })
+                                    return next
+                                  })
+                                  setAppliedTemplateIds((prev) => [...prev, tpl.id])
+                                }
+                              }}
+                              title={zh ? tpl.description.zh : tpl.description.en}
+                              className={cn(
+                                "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-all flex items-center gap-1",
+                                applied
+                                  ? "bg-blue-100 border-blue-300 text-blue-700"
+                                  : "bg-secondary border-border text-foreground hover:bg-secondary/80"
+                              )}
+                            >
+                              {applied && <Check className="size-2.5" />}
+                              {zh ? tpl.label.zh : tpl.label.en}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Audience conflict warning */}
+                    {audienceConflicts.length > 0 && (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 flex items-start gap-2">
+                        <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold text-amber-800">
+                            {zh ? "受众冲突检测" : "Audience conflict detected"}
+                          </p>
+                          <p className="text-[10px] text-amber-700 mt-0.5 leading-relaxed">
+                            {zh
+                              ? "以下受众同时出现在"
+                              : "The following audience segments appear in both "}
+                            <strong>{zh ? "「目标受众」" : "Primary Audience"}</strong>
+                            {zh ? "和" : " and "}
+                            <strong>{zh ? "「排除受众」" : "Excluded Audiences"}</strong>
+                            {zh ? "里，agent 会因为冲突拒答：" : ". Agents will refuse to answer due to conflict:"}
+                            {" "}
+                            <span className="font-semibold">{audienceConflicts.join(", ")}</span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Summary bar */}
                     <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-secondary/50 border border-border text-xs">
                       <ShieldAlert className="size-3.5 text-muted-foreground shrink-0" />
@@ -1913,6 +2408,76 @@ export default function BrandContextPage() {
                             </div>
                           )}
                         </div>
+
+                        {/* Negative-review theme insights (reviews only) */}
+                        {isReviews && showNegativeInsights && (() => {
+                          const negatives = p.items.filter((it) => it.sentiment === "negative")
+                          if (negatives.length === 0) return null
+                          // Aggregate by theme
+                          const themeCounts = new Map<string, { count: number; products: Set<string> }>()
+                          negatives.forEach((it) => {
+                            (it.themes || []).forEach((t) => {
+                              const entry = themeCounts.get(t) || { count: 0, products: new Set() }
+                              entry.count += 1
+                              if (it.product) entry.products.add(it.product)
+                              themeCounts.set(t, entry)
+                            })
+                          })
+                          const topThemes = Array.from(themeCounts.entries())
+                            .map(([theme, v]) => ({ theme, count: v.count, products: Array.from(v.products) }))
+                            .sort((a, b) => b.count - a.count)
+                            .slice(0, 6)
+                          if (topThemes.length === 0) return null
+                          return (
+                            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 flex flex-col gap-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <AlertTriangle className="size-3.5 text-rose-500" />
+                                  <span className="text-[11px] font-semibold text-rose-800">
+                                    {zh ? `负面评价主题分析（${negatives.length} 条差评）` : `Negative review themes (${negatives.length} reviews)`}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => setShowNegativeInsights(false)}
+                                  className="text-[10px] text-rose-600 hover:text-rose-800 underline underline-offset-2"
+                                >
+                                  {zh ? "收起" : "Hide"}
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {topThemes.map((tt) => (
+                                  <button
+                                    key={tt.theme}
+                                    onClick={() => { setSentimentFilter("negative"); setSelectedItemIds(new Set()) }}
+                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-rose-200 hover:bg-rose-100 transition-colors"
+                                    title={tt.products.length ? (zh ? `涉及商品：${tt.products.join("、")}` : `Products: ${tt.products.join(", ")}`) : ""}
+                                  >
+                                    <span className="text-[11px] font-medium text-rose-700">{tt.theme}</span>
+                                    <span className="text-[10px] tabular-nums text-rose-500">×{tt.count}</span>
+                                    {tt.products.length > 0 && (
+                                      <span className="text-[9px] text-rose-500 ml-0.5 truncate max-w-[100px]">
+                                        {tt.products.slice(0, 2).join(", ")}{tt.products.length > 2 ? "…" : ""}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-[10px] text-rose-600 leading-relaxed">
+                                {zh
+                                  ? "点击任一主题查看相关负面评价，Nohi 可以据此调整 agent 回复策略或联动 Guardrails。"
+                                  : "Click any theme to filter negative reviews. Nohi can use these to adjust agent responses or update Guardrails."}
+                              </p>
+                            </div>
+                          )
+                        })()}
+                        {isReviews && !showNegativeInsights && (
+                          <button
+                            onClick={() => setShowNegativeInsights(true)}
+                            className="text-[11px] text-rose-600 hover:text-rose-800 underline underline-offset-2 self-start"
+                          >
+                            {zh ? "显示负面评价主题分析" : "Show negative review themes"}
+                          </button>
+                        )}
 
                         {/* Filters: sentiment + product + category (reviews) */}
                         <div className="flex flex-col gap-2">
