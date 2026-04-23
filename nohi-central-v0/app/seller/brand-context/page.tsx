@@ -149,16 +149,6 @@ const brandStoryQuestions: { id: string; q: { en: string; zh: string }; placehol
   { id: "q-future",   q: { en: "What do you want this brand to be in 3 years?",          zh: "3 年后希望品牌成为什么？" },             placeholder: { en: "Ambition, not a stretch goal — ground it",                           zh: "有野心但要可信，不用画大饼" } },
 ]
 
-const snippetTagOptions: { id: string; label: { en: string; zh: string } }[] = [
-  { id: "origin",   label: { en: "Origin",   zh: "品牌起源" } },
-  { id: "mission",  label: { en: "Mission",  zh: "品牌使命" } },
-  { id: "craft",    label: { en: "Craft",    zh: "工艺" } },
-  { id: "impact",   label: { en: "Impact",   zh: "环境/社会影响" } },
-  { id: "team",     label: { en: "Team",     zh: "团队" } },
-  { id: "customer", label: { en: "Customer", zh: "用户" } },
-  { id: "other",    label: { en: "Other",    zh: "其他" } },
-]
-
 const toneDefaults = [
   "Warm", "Witty", "Authoritative", "Playful", "Serene", "Confident",
   "Friendly", "Professional", "Caring", "Bold", "Sophisticated", "Down-to-earth",
@@ -771,9 +761,7 @@ export default function BrandContextPage() {
   const [storyMode, setStoryMode] = useState<"guided" | "freeform">("guided")
   const [storyAnswers, setStoryAnswers] = useState<Record<string, string>>({})
   const [brandStory, setBrandStory] = useState("")
-  const [snippets, setSnippets] = useState<{ id: string; tag: string; text: string }[]>([])
   const [founderNote, setFounderNote] = useState("")
-  const [pillars, setPillars] = useState<{ id: string; title: string; detail: string }[]>([])
   const [objections, setObjections] = useState<{ id: string; concern: string; response: string }[]>([])
   // Visual Style
   const [styleTags, setStyleTags] = useState<string[]>([])
@@ -851,7 +839,12 @@ export default function BrandContextPage() {
 
   /* ── Simulated parse ── */
 
+  // Ref assigned in a useEffect further down (after healthScore is computed).
+  // Declaring here so simulateParse can read the pre-parse value.
+  const healthScoreRef = useRef(0)
+
   const simulateParse = useCallback((uploadedFileNames: string[]) => {
+    const scoreBefore = healthScoreRef.current
     setHasAttemptedParse(true)
     setTimeout(() => {
       // Fill ALL steps at once
@@ -871,17 +864,7 @@ export default function BrandContextPage() {
         "q-future":   "A quiet, globally-recognized standard for how lifestyle brands should operate — transparent, durable, low-waste.",
       })
       setBrandStory("We started with a simple idea: everyday essentials should look and feel intentional. Born in 2022, our brand combines clean design with sustainable materials, creating products that fit naturally into modern life. Every piece is designed in-house, with a focus on quality over quantity.")
-      setSnippets([
-        { id: "s-origin",  tag: "origin",  text: "After a decade watching the fashion industry ricochet between fast cycles and inaccessible luxury, we started in 2022 to offer a third way — intentional, everyday essentials built to last." },
-        { id: "s-craft",   tag: "craft",   text: "Every garment is drafted by our in-house team in Copenhagen and made-to-order to eliminate leftover stock and mark-downs." },
-        { id: "s-impact",  tag: "impact",  text: "In the last 12 months we've repaired over 3,800 garments, avoided 18 tonnes of overproduction, and sourced 92% of our fabric from certified mills." },
-      ])
       setFounderNote("I launched this brand after years in the fashion industry feeling frustrated by the gap between fast fashion and inaccessible luxury. I believe great design should be available to everyone, made responsibly, and built to last. - Alex Chen, Founder")
-      setPillars([
-        { id: "p1", title: "Sustainable materials",     detail: "We source organic cotton, recycled polyester, and plant-based dyes — never virgin synthetics." },
-        { id: "p2", title: "Designed in-house",         detail: "Every piece is drafted by our in-house design team in Copenhagen and made-to-order to reduce waste." },
-        { id: "p3", title: "Lifetime repair promise",   detail: "We repair any garment for life — just ship it back, we'll mend it, and cover return shipping." },
-      ])
       setObjections([
         { id: "o1", concern: "Why is this more expensive than fast fashion?",     response: "Because we pay fair wages, use higher-quality fabrics, and size production to actual demand — no markdowns, no waste." },
         { id: "o2", concern: "How long does shipping take internationally?",       response: "EU: 3-5 days. US: 5-7 days. APAC: 7-10 days. We're transparent about cutoffs during peak season." },
@@ -925,6 +908,41 @@ export default function BrandContextPage() {
           steps: gapSteps,
         },
       }])
+
+      // A beat later, push the Health Score delta message.
+      // Using setTimeout so React has a chance to flush the state updates
+      // above and the ref (updated by useEffect) reflects the *new* score.
+      setTimeout(() => {
+        const scoreAfter = healthScoreRef.current
+        const delta = scoreAfter - scoreBefore
+        if (delta <= 0) return
+
+        const crossedThreshold = scoreBefore < 70 && scoreAfter >= 70
+        const stillBelow       = scoreAfter < 70
+        const toGoal           = Math.max(0, 70 - scoreAfter)
+
+        let scoreMsg: string
+        if (crossedThreshold) {
+          scoreMsg = zh
+            ? `📈 Brand Health Score：${scoreBefore} → ${scoreAfter}（+${delta}）\n\n🎉 你刚刚跨过了 agent 上线门槛（70 分），现在可以启用 agent 向顾客开放了。`
+            : `📈 Brand Health: ${scoreBefore} → ${scoreAfter} (+${delta})\n\n🎉 You just crossed the agent-live threshold (70). Your agent can now go live to shoppers.`
+        } else if (stillBelow) {
+          scoreMsg = zh
+            ? `📈 Brand Health Score：${scoreBefore} → ${scoreAfter}（+${delta}）\n\n再差 ${toGoal} 分就能达到 agent 上线门槛（≥70）。上方标红的模块会给你最多加分。`
+            : `📈 Brand Health: ${scoreBefore} → ${scoreAfter} (+${delta})\n\nYou're ${toGoal} points away from the agent-live threshold (≥70). The red steps above will give you the biggest lift.`
+        } else {
+          scoreMsg = zh
+            ? `📈 Brand Health Score：${scoreBefore} → ${scoreAfter}（+${delta}）\n\n已经超过 agent 上线门槛（70）。继续完善可以提升智能体回答的准确度。`
+            : `📈 Brand Health: ${scoreBefore} → ${scoreAfter} (+${delta})\n\nAlready above the agent-live threshold (70). Keep filling to sharpen agent accuracy.`
+        }
+
+        setMessages((prev) => [...prev, {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: scoreMsg,
+          timestamp: new Date(),
+        }])
+      }, 400)
     }, 1200)
   }, [zh])
 
@@ -969,9 +987,17 @@ export default function BrandContextPage() {
       setTimeout(() => {
         const alreadyHasFiles = files.length > 0
         const hasAtMention = text.includes("@")
+        const asksStatus = /(am i done|are we done|what('?s| is) left|how.*(complete|ready)|done yet|还差|完成了吗|还剩|进度|多少分)/i.test(text)
         let responseContent: string
 
-        if (hasAtMention && alreadyHasFiles) {
+        if (asksStatus) {
+          const score = healthScoreRef.current
+          const toGoal = Math.max(0, 70 - score)
+          const incompleteSteps = stepDefs.filter((s) => stepStates[s.key] !== "complete" && s.key !== "clone").map((s) => zh ? s.title.zh : s.title.en)
+          responseContent = zh
+            ? `你当前的 Brand Health Score 是 **${score}**${score >= 70 ? "（已达到 agent 上线门槛 70）✅" : `（还差 ${toGoal} 分上线）`}\n\n${incompleteSteps.length === 0 ? "所有模块都填完了 🎉" : `还没填完的模块：${incompleteSteps.join("、")}`}`
+            : `Your current Brand Health is **${score}**${score >= 70 ? " — above the 70 agent-live threshold ✅" : ` — ${toGoal} points below the 70 threshold`}.\n\n${incompleteSteps.length === 0 ? "All sections are complete 🎉" : `Still incomplete: ${incompleteSteps.join(", ")}`}`
+        } else if (hasAtMention && alreadyHasFiles) {
           // User referenced a file — simulate updating a field
           const mentionedFile = text.match(/@([\w._-]+)/)?.[1] || ""
           if (zh) {
@@ -1168,8 +1194,6 @@ export default function BrandContextPage() {
         ...(tagline.trim().length === 0    ? [{ key: "tagline",   label: { en: "Tagline (≤12 words)",        zh: "品牌标语（≤12 字）" } }] : []),
         ...(!hasNarrative                  ? [{ key: "story",     label: { en: "Brand Story (answer 3+ Qs or write a story)", zh: "品牌故事（回答 3+ 问题或直接写）" } }] : []),
         ...(founderNote.trim().length === 0 ? [{ key: "founder",  label: { en: "Founder Note",               zh: "创始人寄语" } }] : []),
-        ...(snippets.length < 2            ? [{ key: "snippets",  label: { en: "Story Snippets (≥2)",        zh: "故事片段（≥2 条）" } }] : []),
-        ...(pillars.length === 0           ? [{ key: "pillars",   label: { en: "Key Messaging Pillars (≥2)", zh: "品牌核心主张（≥2 条）" } }] : []),
         ...(objections.length === 0        ? [{ key: "objections", label: { en: "Objection Handling (≥1)",   zh: "顾虑应对（≥1 条）" } }] : []),
       ]
     })(),
@@ -1203,7 +1227,7 @@ export default function BrandContextPage() {
       case "details": totalFields = 6; filledFields = 6 - missing.length; break
       case "guardrails": totalFields = 4; filledFields = 4 - missing.length; break
       case "visual-style": totalFields = 3; filledFields = 3 - missing.length; break
-      case "brand-story": totalFields = 6; filledFields = 6 - missing.length; break
+      case "brand-story": totalFields = 4; filledFields = 4 - missing.length; break
       case "posts-ugc": totalFields = 3; filledFields = 3 - missing.length; break
       case "fulfillment": totalFields = 4; filledFields = 4 - missing.length; break
       case "clone": totalFields = 1; filledFields = 1 - missing.length; break
@@ -1230,6 +1254,9 @@ export default function BrandContextPage() {
       boost: i === 0 ? "+23%" : "+15%",
       index: stepDefs.findIndex((d) => d.key === s.key),
     }))
+
+  // Keep ref in sync with latest health score
+  useEffect(() => { healthScoreRef.current = healthScore }, [healthScore])
 
   /* ───────── Render ───────── */
 
@@ -1767,7 +1794,7 @@ export default function BrandContextPage() {
                         onChange={(e) => setTagline(e.target.value)}
                         placeholder={zh ? "e.g. 用心做好，持久耐用。" : "e.g. Intentional essentials, made to last."}
                         maxLength={100}
-                        className="w-full rounded-lg bg-secondary border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="w-full rounded-lg bg-secondary border border-border px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] text-muted-foreground">
@@ -1819,16 +1846,16 @@ export default function BrandContextPage() {
                     </div>
 
                     {storyMode === "guided" ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5">
                         {brandStoryQuestions.map((q, idx) => (
-                          <div key={q.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-[10px] font-bold shrink-0">{idx + 1}</span>
-                              <span className="text-[11px] font-semibold text-foreground">
+                          <div key={q.id} className="rounded-lg border border-border bg-secondary/30 p-2 flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="flex size-4 items-center justify-center rounded-full bg-foreground text-background text-[9px] font-bold shrink-0">{idx + 1}</span>
+                              <span className="text-[10px] font-semibold text-foreground">
                                 {zh ? q.q.zh : q.q.en}
                               </span>
                               {(storyAnswers[q.id] || "").trim().length > 0 && (
-                                <Check className="size-3 text-emerald-500 ml-auto" />
+                                <Check className="size-2.5 text-emerald-500 ml-auto" />
                               )}
                             </div>
                             <Textarea
@@ -1836,7 +1863,7 @@ export default function BrandContextPage() {
                               onChange={(e) => setStoryAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                               rows={2}
                               placeholder={zh ? q.placeholder.zh : q.placeholder.en}
-                              className="rounded-md bg-background border-border text-[11px] resize-none"
+                              className="rounded-md bg-background border-border text-[10px] resize-none"
                             />
                           </div>
                         ))}
@@ -1864,8 +1891,8 @@ export default function BrandContextPage() {
                         <Textarea
                           value={brandStory}
                           onChange={(e) => setBrandStory(e.target.value)}
-                          rows={6}
-                          className="rounded-lg bg-secondary border-border resize-none text-xs"
+                          rows={5}
+                          className="rounded-lg bg-secondary border-border resize-none text-[11px]"
                           placeholder={zh ? "在这里写你的品牌故事..." : "Write your brand story here..."}
                         />
                         <div className="flex justify-end">
@@ -1877,109 +1904,15 @@ export default function BrandContextPage() {
                     )}
                   </FormSection>
 
-                  {/* Story Snippets — tagged short paragraphs */}
-                  <FormSection
-                    title={zh ? "故事片段库" : "Story Snippets"}
-                    description={zh ? "每条带一个 tag，agent 会按顾客问题只引用最相关的片段。" : "Tagged short paragraphs. Agents cite only the most relevant snippet for each customer question."}
-                  >
-                    <div className="flex flex-col gap-2">
-                      {snippets.map((s) => (
-                        <div key={s.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1.5 group">
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={s.tag}
-                              onChange={(e) => setSnippets((prev) => prev.map((x) => x.id === s.id ? { ...x, tag: e.target.value } : x))}
-                              className="bg-foreground/10 border border-border rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                              {snippetTagOptions.map((opt) => (
-                                <option key={opt.id} value={opt.id}>{zh ? opt.label.zh : opt.label.en}</option>
-                              ))}
-                            </select>
-                            <span className="text-[10px] text-muted-foreground tabular-nums ml-auto">
-                              {s.text.trim().split(/\s+/).filter(Boolean).length} {zh ? "词" : "words"}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setSnippets((prev) => prev.filter((x) => x.id !== s.id))}
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500"
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          </div>
-                          <Textarea
-                            value={s.text}
-                            onChange={(e) => setSnippets((prev) => prev.map((x) => x.id === s.id ? { ...x, text: e.target.value } : x))}
-                            rows={2}
-                            placeholder={zh ? "一小段内容，和选定的标签对应..." : "A short paragraph that matches the selected tag..."}
-                            className="rounded-md bg-background border-border text-[11px] resize-none"
-                          />
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setSnippets((prev) => [...prev, { id: `sn-${Date.now()}`, tag: "origin", text: "" }])}
-                        className="flex items-center justify-center gap-1 py-1.5 rounded-md border border-dashed border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
-                      >
-                        <Plus className="size-3" />
-                        {zh ? "添加片段" : "Add snippet"}
-                      </button>
-                    </div>
-                  </FormSection>
-
-                  {/* Founder Note — unchanged */}
+                  {/* Founder Note */}
                   <FormSection title={zh ? "创始人寄语" : "Founder Note"} description={zh ? "创始人的个人信息或品牌愿景。" : "Personal message or vision statement."}>
                     <div className="flex flex-col gap-1.5">
                       <Textarea value={founderNote} onChange={(e) => setFounderNote(e.target.value)} rows={3}
-                        className="rounded-lg bg-secondary border-border resize-none text-xs"
+                        className="rounded-lg bg-secondary border-border resize-none text-[11px]"
                         placeholder={zh ? "在这里输入创始人寄语..." : "Enter founder note here..."} />
                       <div className="flex justify-end">
                         <span className="text-[10px] text-muted-foreground tabular-nums">{noteWords} {zh ? "词" : "words"}</span>
                       </div>
-                    </div>
-                  </FormSection>
-
-                  {/* Key Messaging Pillars */}
-                  <FormSection
-                    title={zh ? "品牌核心主张" : "Key Messaging Pillars"}
-                    description={zh ? "2-4 条，agent 在回答中会反复引用的核心主张。" : "2–4 core claims agents will reference in every relevant answer."}
-                  >
-                    <div className="flex flex-col gap-2">
-                      {pillars.map((p, idx) => (
-                        <div key={p.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1 group">
-                          <div className="flex items-center gap-2">
-                            <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-[10px] font-bold shrink-0">{idx + 1}</span>
-                            <input
-                              type="text"
-                              value={p.title}
-                              onChange={(e) => setPillars((prev) => prev.map((x) => x.id === p.id ? { ...x, title: e.target.value } : x))}
-                              placeholder={zh ? "主张标题（e.g. 100% 有机棉）" : "Pillar title (e.g. 100% organic cotton)"}
-                              className="flex-1 bg-transparent text-xs font-semibold text-foreground focus:outline-none placeholder:text-muted-foreground"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setPillars((prev) => prev.filter((x) => x.id !== p.id))}
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500"
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          </div>
-                          <Textarea
-                            value={p.detail}
-                            onChange={(e) => setPillars((prev) => prev.map((x) => x.id === p.id ? { ...x, detail: e.target.value } : x))}
-                            rows={2}
-                            placeholder={zh ? "简短说明（agent 回答时会用到）" : "Short description (agents will quote this in answers)"}
-                            className="rounded-md bg-background border-border text-[11px] resize-none"
-                          />
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setPillars((prev) => [...prev, { id: `p-${Date.now()}`, title: "", detail: "" }])}
-                        className="flex items-center justify-center gap-1 py-1.5 rounded-md border border-dashed border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
-                      >
-                        <Plus className="size-3" />
-                        {zh ? "添加主张" : "Add pillar"}
-                      </button>
                     </div>
                   </FormSection>
 
@@ -1988,10 +1921,10 @@ export default function BrandContextPage() {
                     title={zh ? "顾虑应对" : "Objection Handling"}
                     description={zh ? "常见顾虑 → 品牌标准回答，agent 遇到类似问题会参考。" : "Common concerns and how the brand responds — agents mirror this."}
                   >
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1.5">
                       {objections.map((o) => (
-                        <div key={o.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1.5 group">
-                          <div className="flex items-center gap-2">
+                        <div key={o.id} className="rounded-lg border border-border bg-secondary/30 p-2 flex flex-col gap-1 group">
+                          <div className="flex items-center gap-1.5">
                             <div className="flex-1">
                               <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">
                                 {zh ? "顾客顾虑" : "Customer concern"}
@@ -2001,7 +1934,7 @@ export default function BrandContextPage() {
                                 value={o.concern}
                                 onChange={(e) => setObjections((prev) => prev.map((x) => x.id === o.id ? { ...x, concern: e.target.value } : x))}
                                 placeholder={zh ? "e.g. 为什么比其他品牌贵？" : "e.g. Why is this more expensive than other brands?"}
-                                className="w-full bg-transparent text-xs font-medium text-foreground focus:outline-none placeholder:text-muted-foreground"
+                                className="w-full bg-transparent text-[11px] font-medium text-foreground focus:outline-none placeholder:text-muted-foreground"
                               />
                             </div>
                             <button
@@ -2021,7 +1954,7 @@ export default function BrandContextPage() {
                               onChange={(e) => setObjections((prev) => prev.map((x) => x.id === o.id ? { ...x, response: e.target.value } : x))}
                               rows={2}
                               placeholder={zh ? "品牌标准回答..." : "Standard brand response..."}
-                              className="rounded-md bg-background border-border text-[11px] resize-none"
+                              className="rounded-md bg-background border-border text-[10px] resize-none"
                             />
                           </div>
                         </div>

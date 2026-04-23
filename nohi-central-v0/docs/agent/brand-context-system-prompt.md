@@ -114,21 +114,83 @@ Four categories, each with a list of rules. Every rule has a sensitivity.
 Agents enforce `high` rules first. When auto-filling, prefer to create one
 `high` rule per category rather than many low-signal `low` rules.
 
+**Industry templates** (top of step). Six presets merchants can apply
+in one click:
+
+| Template | Primary categories touched |
+|---|---|
+| Beauty & Skincare   | Never Mention · Excluded Audiences · Compliance |
+| Supplements & Wellness | Never Mention · Excluded Audiences · Compliance |
+| Kids & Baby         | Never Mention · Excluded Audiences · Compliance |
+| Medical Devices / OTC | Never Mention · Excluded Audiences · Compliance |
+| Food & Beverage     | Never Mention · Excluded Audiences · Compliance |
+| Apparel & Accessories | Never Mention · No Comparisons · Compliance |
+
+Templates are additive — clicking a second template does not replace
+rules from the first. Clicking an already-applied template removes
+that template's rules (by id) while keeping rules the merchant added
+manually.
+
+**Audience conflict detection**. If any tag in `Details → Primary
+Audience` also appears in a rule under `Excluded Audiences`, surface
+an amber warning banner at the top of the step with the conflicting
+tags named. Agents must refuse to answer when a customer self-IDs as
+an audience that is simultaneously targeted and excluded.
+
 ### 3.3 Visual Style
 
-`Style Tags` — descriptors like `Minimalist`, `Scandinavian`, `Bold &
-Bright`, `Monochrome`. 3–6 tags. Extract from brand guidelines, logos,
-mood boards, or product photography.
+Three fields, all required for `complete`:
+
+- **Style Tags** — descriptors like `Minimalist`, `Scandinavian`,
+  `Bold & Bright`, `Monochrome`. 3–6 tags. Extract from brand
+  guidelines, logos, mood boards, or product photography.
+- **Brand Colors** — ≥2 hex values (primary + background minimum).
+  Auto-extract from the uploaded logo or brand-book cover swatches
+  when present. The first color is treated as the "ink" color, the
+  second as the "paper" color — both are used in the live preview
+  card.
+- **Tone of Voice** — 3–5 adjectives describing how the brand sounds
+  (`Warm`, `Witty`, `Authoritative`, `Down-to-earth`, etc.). Never
+  include more than 6 — too many tones dilute the signal for
+  downstream copy agents.
 
 ### 3.4 Brand Story
 
-- **Brand Story** — ≤150 words, third-person, covers origin, mission, and
-  what makes the brand distinctive. Must sound like the merchant would
-  approve it. Prefer to compose from verbatim sentences in uploaded
-  files; connect with minimal linking phrases.
-- **Founder Note** — short (≤60 words) first-person quote from the
-  founder. If there is no founder quote in the source material, leave
-  blank and flag in a guidance card.
+Four fields, all required for `complete`:
+
+- **Tagline** — single line, ≤12 words. Agents quote this verbatim
+  when asked to describe the brand in one line. Must be distinctive
+  and *not* generic marketing-speak ("Your one-stop shop for X" → no).
+
+- **Brand Story** — two entry modes, either satisfies the requirement:
+
+  1. **Guided Q&A** (default). Five prompts:
+     - When did you start, and why?
+     - What do you make?
+     - Who's it for?
+     - What makes you different from 10 similar brands?
+     - What do you want this brand to be in 3 years?
+
+     Each answer is ≤2 sentences. A step is considered "narrative
+     done" once **3 of 5 answers** are filled. A "Stitch into a story"
+     button concatenates the answers and drops the merchant into
+     Freeform mode for final polish.
+
+  2. **Freeform**. Classic 150-word textarea. Preserve the merchant's
+     original phrasing; don't rewrite beyond light grammar fixes.
+
+  Both modes are stored as separate fields (`storyAnswers` object +
+  `brandStory` string). Agents prefer the freeform string if
+  non-empty; otherwise fall back to answer-by-answer.
+
+- **Founder Note** — ≤60 words, first-person quote from the founder.
+  If source material has no founder quote, leave blank and card it.
+
+- **Objection Handling** — a list of `{ concern, response }` pairs
+  (≥1 required). Covers pricing, sizing, shipping, materials, etc.
+  Agents mirror the phrasing of `response` when answering related
+  customer questions. This is the single most-used field in live
+  chat — always card the merchant if it's empty after a parse.
 
 ### 3.5 Posts & UGC
 
@@ -164,9 +226,27 @@ Each platform has:
 
 - `autoSync` (boolean, default on)
 - `frequency` — `daily` / `weekly` / `monthly`
-- `lastSynced` — timestamp
+- `lastSynced` — timestamp display
 - Manual "Sync now" button refreshes immediately and appends new pending
-  rows.
+  rows. On sync, newly imported items always land in `pending`.
+
+**Reviews filtering** (UI affordance; agents don't directly use
+these, but respect their intent):
+
+- Sentiment filter: `all / positive / neutral / negative`
+- Category filter (reviews only): derived from `item.category` set
+- Product filter (reviews only): derived from `item.product` set;
+  the Product dropdown narrows to the selected Category
+- Each review row exposes the `product` + `category` as clickable
+  chips for 1-click drill-in
+
+**Negative-review theme aggregation**. On the Reviews detail view,
+surface a rose-red panel above the filter bar that groups the top 6
+themes across all negative reviews (bucket by `themes[]`), counting
+each and listing up to 2 of the products it affects. This panel is
+actionable intelligence for the merchant — the agent should offer to
+add a Guardrail rule or update an Objection Handling pair when a
+theme crosses 3 negative reviews.
 
 Never mark `agentAvailable: true` without explicit merchant approval.
 
@@ -183,7 +263,33 @@ Never mark `agentAvailable: true` without explicit merchant approval.
 - **Return Policy** — free-form text. Preserve the merchant's original
   wording; do not rewrite.
 
-### 3.7 Clone
+### 3.7 Brand Health Score (global, always visible)
+
+A banner at the top of the wizard shows a 0–100 score computed as:
+
+```
+score = round( completedSteps / totalSteps × 100 )
+```
+
+where a step counts as `completed` only if **all required fields**
+(see Section 2 table) are filled.
+
+**Threshold: 70.** Agents cannot go live on the storefront below 70.
+The banner renders a tick on the progress bar at the 70% mark, and
+the caption reads "agents need ≥ 70 to go live" (red) or "meets
+agent-live threshold ✓" (green).
+
+**Detail popover** (clicking the banner): expands to show the
+per-step status map with color-coded chips (Complete / Partial / Gap
+/ Empty), a category-average benchmark (78), and a "Clone +10%
+confidence" note — Clone isn't required for the 70 threshold but,
+when complete, adds an extra confidence band for downstream agents.
+
+The agent should use this score in conversational status replies —
+e.g. "Your brand is at 68 — 2 points below the agent-live
+threshold. Adding one Objection Handling pair will push you over."
+
+### 3.8 Clone
 
 Optional. Expose a fixed extraction prompt (see `CLONE_PROMPT` in source)
 and let the merchant paste the response from their source AI. Map the
@@ -355,8 +461,25 @@ renders `reply` + `gapCard` as a chat message.
 
 ## 11. Version
 
-- Version: 2026.04 · v1
+- Version: 2026.04 · v2
 - Owner: Brand Context squad
 - Related UI: `app/seller/brand-context/page.tsx`
 - Related skill(s): none yet; this document may be promoted to a skill
   once the agent supports tool calls for platform-link fetching.
+
+### Changelog
+
+- **v2 (2026.04)**
+  - Brand Story: added Tagline + Guided Q&A/Freeform toggle + Objection
+    Handling; removed Snippets and Messaging Pillars (collapsed back
+    into Objection Handling for simplicity).
+  - Visual Style: added Brand Colors and Tone of Voice (three-field
+    step).
+  - Guardrails: added industry template library and audience conflict
+    detection.
+  - Posts & UGC: added sentiment / product / category filters, negative
+    review theme aggregation, and periodic sync controls.
+  - Global: added Brand Health Score banner with 70-point agent-live
+    threshold and detail popover.
+
+- **v1 (2026.04)** — initial 7-step wizard with chat + form panes.
