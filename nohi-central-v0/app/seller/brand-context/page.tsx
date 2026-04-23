@@ -141,6 +141,24 @@ const styleMore = [
   "Handcrafted", "Art Deco", "Brutalist", "Cottagecore", "Y2K", "Grunge",
 ]
 
+const brandStoryQuestions: { id: string; q: { en: string; zh: string }; placeholder: { en: string; zh: string } }[] = [
+  { id: "q-why",      q: { en: "When did you start, and why?",                           zh: "品牌什么时候创立？为什么？" },             placeholder: { en: "e.g. 2022, frustrated by the gap between fast fashion and luxury", zh: "e.g. 2022 年，因为不满足快时尚和奢侈品之间的断层" } },
+  { id: "q-make",     q: { en: "What do you make?",                                      zh: "你们做的是什么产品？" },                 placeholder: { en: "Short, scannable — what comes off the shelves",                      zh: "一句话描述，不用长" } },
+  { id: "q-audience", q: { en: "Who's it for?",                                          zh: "谁是你们的用户？" },                    placeholder: { en: "One sentence on the customer you're designing for",                   zh: "你们在为什么人设计？" } },
+  { id: "q-diff",     q: { en: "What makes you different from 10 similar brands?",       zh: "你们和 10 个同类品牌有啥不同？" },        placeholder: { en: "Be specific — materials, ethics, pricing, craft, people, something real", zh: "具体一点：材料、工艺、定价、理念都行" } },
+  { id: "q-future",   q: { en: "What do you want this brand to be in 3 years?",          zh: "3 年后希望品牌成为什么？" },             placeholder: { en: "Ambition, not a stretch goal — ground it",                           zh: "有野心但要可信，不用画大饼" } },
+]
+
+const snippetTagOptions: { id: string; label: { en: string; zh: string } }[] = [
+  { id: "origin",   label: { en: "Origin",   zh: "品牌起源" } },
+  { id: "mission",  label: { en: "Mission",  zh: "品牌使命" } },
+  { id: "craft",    label: { en: "Craft",    zh: "工艺" } },
+  { id: "impact",   label: { en: "Impact",   zh: "环境/社会影响" } },
+  { id: "team",     label: { en: "Team",     zh: "团队" } },
+  { id: "customer", label: { en: "Customer", zh: "用户" } },
+  { id: "other",    label: { en: "Other",    zh: "其他" } },
+]
+
 const toneDefaults = [
   "Warm", "Witty", "Authoritative", "Playful", "Serene", "Confident",
   "Friendly", "Professional", "Caring", "Bold", "Sophisticated", "Down-to-earth",
@@ -749,7 +767,11 @@ export default function BrandContextPage() {
   const [scenarioTags, setScenarioTags] = useState<string[]>([])
   const [intentTags, setIntentTags] = useState<string[]>([])
   // Brand Story
+  const [tagline, setTagline] = useState("")
+  const [storyMode, setStoryMode] = useState<"guided" | "freeform">("guided")
+  const [storyAnswers, setStoryAnswers] = useState<Record<string, string>>({})
   const [brandStory, setBrandStory] = useState("")
+  const [snippets, setSnippets] = useState<{ id: string; tag: string; text: string }[]>([])
   const [founderNote, setFounderNote] = useState("")
   const [pillars, setPillars] = useState<{ id: string; title: string; detail: string }[]>([])
   const [objections, setObjections] = useState<{ id: string; concern: string; response: string }[]>([])
@@ -839,7 +861,21 @@ export default function BrandContextPage() {
       setAudienceTags(["Gen Z Women", "Millennials", "Eco-Conscious"])
       setScenarioTags(["Self-Care", "Workwear", "Weekend Casual", "Home Office"])
       setIntentTags(["Sustainable Choice", "Premium Quality", "Everyday Essential"])
+      setTagline("Intentional essentials, made to last.")
+      setStoryMode("guided")
+      setStoryAnswers({
+        "q-why":      "Founded in 2022 out of frustration with the gap between fast fashion and unreachable luxury.",
+        "q-make":     "Everyday lifestyle essentials: apparel, home, and accessories built from sustainable materials.",
+        "q-audience": "People who want their daily basics to be intentional, long-lasting, and fairly made.",
+        "q-diff":     "Made-to-order in Copenhagen, designed in-house, and every garment comes with a lifetime repair promise.",
+        "q-future":   "A quiet, globally-recognized standard for how lifestyle brands should operate — transparent, durable, low-waste.",
+      })
       setBrandStory("We started with a simple idea: everyday essentials should look and feel intentional. Born in 2022, our brand combines clean design with sustainable materials, creating products that fit naturally into modern life. Every piece is designed in-house, with a focus on quality over quantity.")
+      setSnippets([
+        { id: "s-origin",  tag: "origin",  text: "After a decade watching the fashion industry ricochet between fast cycles and inaccessible luxury, we started in 2022 to offer a third way — intentional, everyday essentials built to last." },
+        { id: "s-craft",   tag: "craft",   text: "Every garment is drafted by our in-house team in Copenhagen and made-to-order to eliminate leftover stock and mark-downs." },
+        { id: "s-impact",  tag: "impact",  text: "In the last 12 months we've repaired over 3,800 garments, avoided 18 tonnes of overproduction, and sourced 92% of our fabric from certified mills." },
+      ])
       setFounderNote("I launched this brand after years in the fashion industry feeling frustrated by the gap between fast fashion and inaccessible luxury. I believe great design should be available to everyone, made responsibly, and built to last. - Alex Chen, Founder")
       setPillars([
         { id: "p1", title: "Sustainable materials",     detail: "We source organic cotton, recycled polyester, and plant-based dyes — never virgin synthetics." },
@@ -1125,12 +1161,18 @@ export default function BrandContextPage() {
       ...(toneTags.length === 0    ? [{ key: "tone",   label: { en: "Tone of Voice",   zh: "语调风格" } }] : []),
       ...(brandColors.length < 2   ? [{ key: "colors", label: { en: "Brand Colors (≥2)", zh: "品牌色板（≥2 色）" } }] : []),
     ],
-    "brand-story": [
-      ...(brandStory.trim().length === 0  ? [{ key: "story",     label: { en: "Brand Story",          zh: "品牌故事" } }] : []),
-      ...(founderNote.trim().length === 0 ? [{ key: "founder",   label: { en: "Founder Note",         zh: "创始人寄语" } }] : []),
-      ...(pillars.length === 0            ? [{ key: "pillars",   label: { en: "Key Messaging Pillars (≥2)", zh: "品牌核心主张（≥2 条）" } }] : []),
-      ...(objections.length === 0         ? [{ key: "objections", label: { en: "Objection Handling (≥1)",   zh: "顾虑应对（≥1 条）" } }] : []),
-    ],
+    "brand-story": (() => {
+      const answeredCount = brandStoryQuestions.filter((q) => (storyAnswers[q.id] || "").trim().length > 0).length
+      const hasNarrative = brandStory.trim().length > 0 || answeredCount >= 3
+      return [
+        ...(tagline.trim().length === 0    ? [{ key: "tagline",   label: { en: "Tagline (≤12 words)",        zh: "品牌标语（≤12 字）" } }] : []),
+        ...(!hasNarrative                  ? [{ key: "story",     label: { en: "Brand Story (answer 3+ Qs or write a story)", zh: "品牌故事（回答 3+ 问题或直接写）" } }] : []),
+        ...(founderNote.trim().length === 0 ? [{ key: "founder",  label: { en: "Founder Note",               zh: "创始人寄语" } }] : []),
+        ...(snippets.length < 2            ? [{ key: "snippets",  label: { en: "Story Snippets (≥2)",        zh: "故事片段（≥2 条）" } }] : []),
+        ...(pillars.length === 0           ? [{ key: "pillars",   label: { en: "Key Messaging Pillars (≥2)", zh: "品牌核心主张（≥2 条）" } }] : []),
+        ...(objections.length === 0        ? [{ key: "objections", label: { en: "Objection Handling (≥1)",   zh: "顾虑应对（≥1 条）" } }] : []),
+      ]
+    })(),
     "posts-ugc": (() => {
       const gaps: { key: string; label: { en: string; zh: string } }[] = []
       const socialConnected = platformsData.filter((p) => platformMetas.find((m) => m.key === p.key)?.kind === "social" && p.connected).length
@@ -1161,7 +1203,7 @@ export default function BrandContextPage() {
       case "details": totalFields = 6; filledFields = 6 - missing.length; break
       case "guardrails": totalFields = 4; filledFields = 4 - missing.length; break
       case "visual-style": totalFields = 3; filledFields = 3 - missing.length; break
-      case "brand-story": totalFields = 4; filledFields = 4 - missing.length; break
+      case "brand-story": totalFields = 6; filledFields = 6 - missing.length; break
       case "posts-ugc": totalFields = 3; filledFields = 3 - missing.length; break
       case "fulfillment": totalFields = 4; filledFields = 4 - missing.length; break
       case "clone": totalFields = 1; filledFields = 1 - missing.length; break
@@ -1708,21 +1750,183 @@ export default function BrandContextPage() {
               )}
 
               {/* ── BRAND STORY step ── */}
-              {step.key === "brand-story" && (
+              {step.key === "brand-story" && (() => {
+                const taglineWords = tagline.trim().split(/\s+/).filter(Boolean).length
+                const answeredCount = brandStoryQuestions.filter((q) => (storyAnswers[q.id] || "").trim().length > 0).length
+                return (
                 <>
-                  <FormSection title={zh ? "品牌故事" : "Brand Story"} description={zh ? "150字以内，供AI智能体参考。" : "150 words or less for AI agents to reference."}>
+                  {/* Tagline — single line, required */}
+                  <FormSection
+                    title={zh ? "品牌标语" : "Tagline"}
+                    description={zh ? "≤12 字，agent 被问「用一句话介绍你们品牌」时直接用。" : "≤12 words. Agents will quote this when asked to describe you in one line."}
+                  >
                     <div className="flex flex-col gap-1.5">
-                      <Textarea value={brandStory} onChange={(e) => setBrandStory(e.target.value)} rows={5}
-                        className="rounded-lg bg-secondary border-border resize-none text-xs"
-                        placeholder={zh ? "在这里输入您的品牌故事..." : "Enter your brand story here..."} />
-                      <div className="flex justify-end">
-                        <span className={`text-[10px] tabular-nums ${storyWords > 150 ? "text-destructive" : "text-muted-foreground"}`}>
-                          {storyWords} / 150 {zh ? "词" : "words"}
+                      <input
+                        type="text"
+                        value={tagline}
+                        onChange={(e) => setTagline(e.target.value)}
+                        placeholder={zh ? "e.g. 用心做好，持久耐用。" : "e.g. Intentional essentials, made to last."}
+                        maxLength={100}
+                        className="w-full rounded-lg bg-secondary border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-muted-foreground">
+                          {zh ? "短、独特、不营销口号化" : "Short, distinctive, not marketing-speak"}
+                        </span>
+                        <span className={cn("text-[10px] tabular-nums", taglineWords > 12 ? "text-destructive" : "text-muted-foreground")}>
+                          {taglineWords} / 12 {zh ? "词" : "words"}
                         </span>
                       </div>
                     </div>
                   </FormSection>
 
+                  {/* Brand Story — toggle between guided Q&A and freeform */}
+                  <FormSection
+                    title={zh ? "品牌故事" : "Brand Story"}
+                    description={zh ? "用问答引导快速搭骨架，或者直接自由写。" : "Answer a few prompts or write it freeform — whichever feels easier."}
+                  >
+                    {/* Mode toggle */}
+                    <div className="flex items-center gap-1 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setStoryMode("guided")}
+                        className={cn(
+                          "px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors",
+                          storyMode === "guided"
+                            ? "bg-foreground text-background"
+                            : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                        )}
+                      >
+                        {zh ? "问答引导" : "Guided Q&A"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStoryMode("freeform")}
+                        className={cn(
+                          "px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors",
+                          storyMode === "freeform"
+                            ? "bg-foreground text-background"
+                            : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                        )}
+                      >
+                        {zh ? "直接写" : "Freeform"}
+                      </button>
+                      <span className="text-[10px] text-muted-foreground ml-auto">
+                        {storyMode === "guided"
+                          ? `${answeredCount} / ${brandStoryQuestions.length} ${zh ? "已回答" : "answered"}`
+                          : `${storyWords} / 150 ${zh ? "词" : "words"}`}
+                      </span>
+                    </div>
+
+                    {storyMode === "guided" ? (
+                      <div className="flex flex-col gap-2">
+                        {brandStoryQuestions.map((q, idx) => (
+                          <div key={q.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-[10px] font-bold shrink-0">{idx + 1}</span>
+                              <span className="text-[11px] font-semibold text-foreground">
+                                {zh ? q.q.zh : q.q.en}
+                              </span>
+                              {(storyAnswers[q.id] || "").trim().length > 0 && (
+                                <Check className="size-3 text-emerald-500 ml-auto" />
+                              )}
+                            </div>
+                            <Textarea
+                              value={storyAnswers[q.id] || ""}
+                              onChange={(e) => setStoryAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                              rows={2}
+                              placeholder={zh ? q.placeholder.zh : q.placeholder.en}
+                              className="rounded-md bg-background border-border text-[11px] resize-none"
+                            />
+                          </div>
+                        ))}
+                        {answeredCount >= 3 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Stitch answers into a narrative and fill freeform story
+                              const joined = brandStoryQuestions
+                                .map((q) => (storyAnswers[q.id] || "").trim())
+                                .filter(Boolean)
+                                .join(" ")
+                              setBrandStory(joined)
+                              setStoryMode("freeform")
+                            }}
+                            className="flex items-center justify-center gap-1.5 py-2 rounded-md bg-foreground/5 hover:bg-foreground/10 text-[11px] text-foreground transition-colors border border-dashed border-border"
+                          >
+                            <Sparkles className="size-3" />
+                            {zh ? "合成为一段故事 →" : "Stitch into a story →"}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        <Textarea
+                          value={brandStory}
+                          onChange={(e) => setBrandStory(e.target.value)}
+                          rows={6}
+                          className="rounded-lg bg-secondary border-border resize-none text-xs"
+                          placeholder={zh ? "在这里写你的品牌故事..." : "Write your brand story here..."}
+                        />
+                        <div className="flex justify-end">
+                          <span className={`text-[10px] tabular-nums ${storyWords > 150 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {storyWords} / 150 {zh ? "词" : "words"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </FormSection>
+
+                  {/* Story Snippets — tagged short paragraphs */}
+                  <FormSection
+                    title={zh ? "故事片段库" : "Story Snippets"}
+                    description={zh ? "每条带一个 tag，agent 会按顾客问题只引用最相关的片段。" : "Tagged short paragraphs. Agents cite only the most relevant snippet for each customer question."}
+                  >
+                    <div className="flex flex-col gap-2">
+                      {snippets.map((s) => (
+                        <div key={s.id} className="rounded-lg border border-border bg-secondary/30 p-2.5 flex flex-col gap-1.5 group">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={s.tag}
+                              onChange={(e) => setSnippets((prev) => prev.map((x) => x.id === s.id ? { ...x, tag: e.target.value } : x))}
+                              className="bg-foreground/10 border border-border rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            >
+                              {snippetTagOptions.map((opt) => (
+                                <option key={opt.id} value={opt.id}>{zh ? opt.label.zh : opt.label.en}</option>
+                              ))}
+                            </select>
+                            <span className="text-[10px] text-muted-foreground tabular-nums ml-auto">
+                              {s.text.trim().split(/\s+/).filter(Boolean).length} {zh ? "词" : "words"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSnippets((prev) => prev.filter((x) => x.id !== s.id))}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </div>
+                          <Textarea
+                            value={s.text}
+                            onChange={(e) => setSnippets((prev) => prev.map((x) => x.id === s.id ? { ...x, text: e.target.value } : x))}
+                            rows={2}
+                            placeholder={zh ? "一小段内容，和选定的标签对应..." : "A short paragraph that matches the selected tag..."}
+                            className="rounded-md bg-background border-border text-[11px] resize-none"
+                          />
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setSnippets((prev) => [...prev, { id: `sn-${Date.now()}`, tag: "origin", text: "" }])}
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-md border border-dashed border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+                      >
+                        <Plus className="size-3" />
+                        {zh ? "添加片段" : "Add snippet"}
+                      </button>
+                    </div>
+                  </FormSection>
+
+                  {/* Founder Note — unchanged */}
                   <FormSection title={zh ? "创始人寄语" : "Founder Note"} description={zh ? "创始人的个人信息或品牌愿景。" : "Personal message or vision statement."}>
                     <div className="flex flex-col gap-1.5">
                       <Textarea value={founderNote} onChange={(e) => setFounderNote(e.target.value)} rows={3}
@@ -1833,7 +2037,8 @@ export default function BrandContextPage() {
                     </div>
                   </FormSection>
                 </>
-              )}
+                )
+              })()}
 
               {/* ── VISUAL STYLE step ── */}
               {step.key === "visual-style" && (
