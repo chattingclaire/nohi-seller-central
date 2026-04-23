@@ -57,6 +57,11 @@ interface ChatMessage {
   content: string
   files?: string[]
   timestamp: Date
+  // Optional embedded action card — lists gap steps with jump buttons
+  gapCard?: {
+    title: { en: string; zh: string }
+    steps: { stepKey: string; reason: { en: string; zh: string } }[]
+  }
 }
 
 /* ───────── File helpers ───────── */
@@ -640,6 +645,13 @@ export default function BrandContextPage() {
   const [cloneCopied, setCloneCopied] = useState(false)
   const [clonePastedMemory, setClonePastedMemory] = useState("")
   const [cloneImported, setCloneImported] = useState(false)
+  // Gap tracking — true after any file parse, so empty sections become "red gap"
+  const [hasAttemptedParse, setHasAttemptedParse] = useState(false)
+  // Reviews auto-sync
+  const [reviewsAutoSync, setReviewsAutoSync] = useState(true)
+  const [reviewsSyncFreq, setReviewsSyncFreq] = useState<"daily" | "weekly" | "monthly">("weekly")
+  const [reviewsLastSynced, setReviewsLastSynced] = useState<string>("30m ago")
+  const [reviewsSyncing, setReviewsSyncing] = useState(false)
   // Posts & UGC
   const [platformsData, setPlatformsData] = useState<PlatformData[]>(mockPlatformsData)
   const [activePlatform, setActivePlatform] = useState<PlatformKey | null>(null)
@@ -684,6 +696,7 @@ export default function BrandContextPage() {
   /* ── Simulated parse ── */
 
   const simulateParse = useCallback((uploadedFileNames: string[]) => {
+    setHasAttemptedParse(true)
     setTimeout(() => {
       // Fill ALL steps at once
       setSelectedCategories(["Fashion & Apparel"])
@@ -711,14 +724,24 @@ export default function BrandContextPage() {
       const fileList = uploadedFileNames.length > 0 ? uploadedFileNames.join(zh ? "、" : ", ") : ""
 
       const response = zh
-        ? `✅ 已解析${fileList ? ` ${fileList}` : "您的描述"}，以下内容已自动填充：\n\n✓ 「详情」— 已填充品类、客单价、受众和场景标签，点击步骤 1 查看\n✓ 「品牌故事」— 已生成品牌故事和创始人寄语，点击步骤 2 查看\n✓ 「视觉风格」— 已识别 4 个风格标签，点击步骤 3 查看\n\n⚠️ 以下内容尚未完全覆盖，建议补充：\n\n• 「品牌护栏」— 目前仅设置了基础规则，如有合规文档或品牌政策可继续上传\n• 「履约配送」— 已填充基本指标，如有详细退换政策文档可补充上传\n\n您可以点击上方对应步骤直接查看和编辑，也可以在这里告诉我需要调整的内容。`
-        : `✅ Parsed${fileList ? ` ${fileList}` : " your description"}. Here's what was filled:\n\n✓ "Details" — category, AOV, audience & scenario tags filled → click Step 1 to review\n✓ "Brand Story" — narrative and founder note generated → click Step 2 to review\n✓ "Visual Style" — 4 style tags identified → click Step 3 to review\n\n⚠️ These sections need more info:\n\n• "Guardrails" — only basic rules set. Upload compliance docs or brand policy for better coverage\n• "Fulfillment" — basic metrics filled. Upload a detailed return policy doc to complete\n\nClick any step above to review and edit, or tell me what to adjust here.`
+        ? `✅ 已解析${fileList ? ` ${fileList}` : "您的描述"}，以下内容已自动填充：\n\n✓ 「详情」「视觉风格」「品牌故事」「履约配送」— 已从文件中提取并填好\n✓ 「品牌护栏」— 已设置默认规则 + 从合规内容中提取 1 条\n\n但是有些内容我没法从上传的文件里拿到，需要你补充一下 👇`
+        : `✅ Parsed${fileList ? ` ${fileList}` : " your description"}. Auto-filled from your files:\n\n✓ "Details" / "Visual Style" / "Brand Story" / "Fulfillment" — extracted from your files\n✓ "Guardrails" — default rules applied + 1 compliance rule pulled from your doc\n\nBut a few things I can't get from uploaded files — they need your input 👇`
+
+      // Build gap card pointing at steps that still need user input
+      const gapSteps = [
+        { stepKey: "posts-ugc", reason: { en: "Paste links from Instagram / TikTok / Reviews / YouTube / Reddit so agents can reference real social content.", zh: "粘贴 Instagram / TikTok / 客户评价 / YouTube 等链接，智能体才能引用真实社交内容。" } },
+        { stepKey: "clone", reason: { en: "Optional — if you already have brand knowledge in ChatGPT / Gemini / Claude, import it in 30s.", zh: "可选 — 如果你已经在 ChatGPT / Gemini / Claude 里有品牌知识，30 秒就能导入。" } },
+      ]
 
       setMessages((prev) => [...prev, {
         id: crypto.randomUUID(),
         role: "assistant",
         content: response,
         timestamp: new Date(),
+        gapCard: {
+          title: { en: "Still needed", zh: "还需要你补充" },
+          steps: gapSteps,
+        },
       }])
     }, 1200)
   }, [zh])
@@ -935,23 +958,79 @@ export default function BrandContextPage() {
   const storyWords = wordCount(brandStory)
   const noteWords = wordCount(founderNote)
 
-  /* ── Brand Health Score: compute completion per step ── */
-  const stepCompletion: Record<string, boolean> = {
-    "details": selectedCategories.length > 0 && !!selectedAov && !!selectedPurchaseType && audienceTags.length > 0 && scenarioTags.length > 0 && intentTags.length > 0,
-    "guardrails": Object.values(rulesByCategory).every((rules) => rules.length > 0),
-    "visual-style": styleTags.length > 0,
-    "brand-story": brandStory.trim().length > 0 && founderNote.trim().length > 0,
-    "posts-ugc": platformsData.some((p) => p.items.some((i) => i.status === "approved")),
-    "fulfillment": !!shippingRank && !!processingTime && !!onTimeRate && returnPolicy.trim().length > 0,
-    "clone": cloneImported,
+  /* ── Per-step missing-fields computation ── */
+  const stepMissingFields: Record<string, { key: string; label: { en: string; zh: string } }[]> = {
+    "details": [
+      ...(selectedCategories.length === 0 ? [{ key: "categories", label: { en: "Core Category",    zh: "核心品类" } }] : []),
+      ...(!selectedAov                    ? [{ key: "aov",        label: { en: "AOV Tier",         zh: "客单价层级" } }] : []),
+      ...(!selectedPurchaseType           ? [{ key: "purchase",   label: { en: "Purchase Type",    zh: "购买类型" } }] : []),
+      ...(audienceTags.length === 0       ? [{ key: "audience",   label: { en: "Primary Audience", zh: "目标受众" } }] : []),
+      ...(scenarioTags.length === 0       ? [{ key: "scenario",   label: { en: "Scenario Tags",    zh: "场景标签" } }] : []),
+      ...(intentTags.length === 0         ? [{ key: "intent",     label: { en: "Intent Tags",      zh: "意图标签" } }] : []),
+    ],
+    "guardrails": Object.entries(rulesByCategory)
+      .filter(([, rules]) => rules.length === 0)
+      .map(([catId]) => {
+        const cat = GUARDRAIL_CATEGORIES.find((c) => c.id === catId)!
+        return { key: catId, label: cat.label }
+      }),
+    "visual-style": [
+      ...(styleTags.length === 0 ? [{ key: "style", label: { en: "Style Tags", zh: "风格标签" } }] : []),
+    ],
+    "brand-story": [
+      ...(brandStory.trim().length === 0 ? [{ key: "story",  label: { en: "Brand Story",  zh: "品牌故事" } }] : []),
+      ...(founderNote.trim().length === 0 ? [{ key: "founder", label: { en: "Founder Note", zh: "创始人寄语" } }] : []),
+    ],
+    "posts-ugc": (() => {
+      const gaps: { key: string; label: { en: string; zh: string } }[] = []
+      const socialConnected = platformsData.filter((p) => platformMetas.find((m) => m.key === p.key)?.kind === "social" && p.connected).length
+      if (socialConnected === 0)   gaps.push({ key: "social",  label: { en: "Connect at least one social platform (Instagram / TikTok / YouTube / …)", zh: "至少接入一个社交平台（Instagram / TikTok / YouTube 等）" } })
+      const reviewsPlatform = platformsData.find((p) => p.key === "reviews")
+      if (!reviewsPlatform?.items.length) gaps.push({ key: "reviews", label: { en: "Import customer reviews",          zh: "导入客户评价" } })
+      if (!platformsData.some((p) => p.items.some((i) => i.status === "approved")))
+        gaps.push({ key: "approved", label: { en: "Approve at least one item so agents can reference it", zh: "至少审核通过一条内容供智能体引用" } })
+      return gaps
+    })(),
+    "fulfillment": [
+      ...(!shippingRank                   ? [{ key: "sla",          label: { en: "Shipping SLA Tier", zh: "配送 SLA 等级" } }] : []),
+      ...(!processingTime                 ? [{ key: "processing",   label: { en: "Processing Time",   zh: "处理时间" } }] : []),
+      ...(!onTimeRate                     ? [{ key: "ontime",       label: { en: "On-Time Rate",      zh: "准时率" } }] : []),
+      ...(returnPolicy.trim().length === 0 ? [{ key: "policy",      label: { en: "Return Policy",     zh: "退换政策" } }] : []),
+    ],
+    "clone": cloneImported ? [] : [{ key: "import", label: { en: "Import memory from an existing AI (optional)", zh: "从现有 AI 导入记忆（可选）" } }],
   }
-  const completedSteps = stepDefs.filter((s) => stepCompletion[s.key]).length
+
+  // Completion state per step: "complete" | "partial" | "gap" | "empty"
+  type StepState = "complete" | "partial" | "gap" | "empty"
+  const stepStates: Record<string, StepState> = {}
+  stepDefs.forEach((s) => {
+    const missing = stepMissingFields[s.key] || []
+    // Count filled fields
+    let totalFields = 0, filledFields = 0
+    switch (s.key) {
+      case "details": totalFields = 6; filledFields = 6 - missing.length; break
+      case "guardrails": totalFields = 4; filledFields = 4 - missing.length; break
+      case "visual-style": totalFields = 1; filledFields = 1 - missing.length; break
+      case "brand-story": totalFields = 2; filledFields = 2 - missing.length; break
+      case "posts-ugc": totalFields = 3; filledFields = 3 - missing.length; break
+      case "fulfillment": totalFields = 4; filledFields = 4 - missing.length; break
+      case "clone": totalFields = 1; filledFields = 1 - missing.length; break
+    }
+    if (missing.length === 0) stepStates[s.key] = "complete"
+    else if (filledFields === 0) stepStates[s.key] = hasAttemptedParse && s.key !== "clone" ? "gap" : "empty"
+    else stepStates[s.key] = hasAttemptedParse && s.key !== "clone" ? "gap" : "partial"
+  })
+  // "clone" is always treated as optional — never red
+  if (stepStates["clone"] !== "complete") stepStates["clone"] = "empty"
+
+  /* ── Brand Health Score ── */
+  const completedSteps = stepDefs.filter((s) => stepStates[s.key] === "complete").length
   const totalSteps = stepDefs.length
   const healthScore = Math.round((completedSteps / totalSteps) * 100)
   const scoreColor = healthScore >= 70 ? "text-emerald-600" : healthScore >= 40 ? "text-amber-600" : "text-red-500"
   const barColor   = healthScore >= 70 ? "bg-emerald-500" : healthScore >= 40 ? "bg-amber-500" : "bg-red-500"
   const boostSuggestions = stepDefs
-    .filter((s) => !stepCompletion[s.key] && s.key !== "clone")
+    .filter((s) => stepStates[s.key] !== "complete" && s.key !== "clone")
     .slice(0, 2)
     .map((s, i) => ({
       key: s.key,
@@ -1000,32 +1079,39 @@ export default function BrandContextPage() {
         </div>
       </div>
 
-      {/* ── Step progress ── */}
+      {/* ── Step progress (with gap/partial/complete states) ── */}
       <div className="shrink-0 border-b border-border px-6 py-3">
         <div className="flex items-center gap-1">
           {stepDefs.map((s, i) => {
             const isCurrent = i === currentStep
-            const isDone = i < currentStep
+            const state = stepStates[s.key]
+            const isComplete = state === "complete"
+            const isGap      = state === "gap"
+            const isPartial  = state === "partial"
             return (
               <div key={s.key} className="flex items-center gap-1 flex-1 min-w-0">
                 <button
                   onClick={() => setCurrentStep(i)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all flex-1 min-w-0",
-                    isCurrent
-                      ? "bg-foreground text-background"
-                      : isDone
-                        ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                    isCurrent  ? "bg-foreground text-background"
+                    : isComplete ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15"
+                    : isGap      ? "bg-red-500/10 text-red-700 hover:bg-red-500/15"
+                    : isPartial  ? "bg-amber-500/10 text-amber-700 hover:bg-amber-500/15"
+                    :              "bg-secondary text-muted-foreground hover:bg-secondary/80"
                   )}
                 >
                   <span className={cn(
                     "size-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold",
-                    isCurrent ? "bg-background text-foreground"
-                      : isDone ? "bg-emerald-500 text-white"
-                        : "bg-muted-foreground/20 text-muted-foreground"
+                    isCurrent    ? "bg-background text-foreground"
+                    : isComplete ? "bg-emerald-500 text-white"
+                    : isGap      ? "bg-red-500 text-white"
+                    : isPartial  ? "bg-amber-500 text-white"
+                    :              "bg-muted-foreground/20 text-muted-foreground"
                   )}>
-                    {isDone ? <Check className="size-3" /> : i + 1}
+                    {isComplete ? <Check className="size-3" />
+                      : isGap    ? <AlertTriangle className="size-3" />
+                      : i + 1}
                   </span>
                   <span className="truncate">{zh ? s.title.zh : s.title.en}</span>
                 </button>
@@ -1146,6 +1232,43 @@ export default function BrandContextPage() {
                   )}>
                     {msg.content}
                   </div>
+                  {/* Gap action card */}
+                  {msg.gapCard && (
+                    <div className="mt-1.5 w-full max-w-[95%] rounded-xl border border-border bg-background p-2.5 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <AlertTriangle className="size-3 text-amber-500" />
+                        <span className="text-[10px] font-semibold text-foreground uppercase tracking-wide">
+                          {zh ? msg.gapCard.title.zh : msg.gapCard.title.en}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {msg.gapCard.steps.map((gs) => {
+                          const sd = stepDefs.find((s) => s.key === gs.stepKey)
+                          if (!sd) return null
+                          const idx = stepDefs.findIndex((s) => s.key === gs.stepKey)
+                          return (
+                            <button
+                              key={gs.stepKey}
+                              onClick={() => setCurrentStep(idx)}
+                              className="flex items-start gap-2 p-2 rounded-lg border border-border bg-secondary/40 hover:bg-secondary/70 transition-colors text-left group"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[11px] font-semibold text-foreground">
+                                    {zh ? sd.title.zh : sd.title.en}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                                  {zh ? gs.reason.zh : gs.reason.en}
+                                </p>
+                              </div>
+                              <ArrowRight className="size-3 text-muted-foreground group-hover:text-foreground mt-0.5 shrink-0" />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               <div ref={chatEndRef} />
@@ -1253,6 +1376,44 @@ export default function BrandContextPage() {
                   {zh ? step.description.zh : step.description.en}
                 </p>
               </div>
+
+              {/* Still needed banner (gap/partial state) */}
+              {(() => {
+                const state = stepStates[step.key]
+                const missing = stepMissingFields[step.key] || []
+                if (state !== "gap" && state !== "partial") return null
+                const isGap = state === "gap"
+                return (
+                  <div className={cn(
+                    "rounded-xl border p-3 flex items-start gap-2.5",
+                    isGap ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
+                  )}>
+                    <AlertTriangle className={cn("size-4 shrink-0 mt-0.5", isGap ? "text-red-500" : "text-amber-500")} />
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-[11px] font-semibold", isGap ? "text-red-700" : "text-amber-700")}>
+                        {isGap
+                          ? (zh ? "以下字段还需要你补充" : "These fields still need your input")
+                          : (zh ? "部分内容可以进一步完善" : "A few fields can still be improved")}
+                      </p>
+                      <ul className="mt-1 flex flex-wrap gap-1.5">
+                        {missing.map((m) => (
+                          <li key={m.key} className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded border",
+                            isGap ? "border-red-200 bg-white text-red-700" : "border-amber-200 bg-white text-amber-700"
+                          )}>
+                            {zh ? m.label.zh : m.label.en}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className={cn("text-[10px] mt-2 leading-relaxed", isGap ? "text-red-600" : "text-amber-600")}>
+                        {step.key === "posts-ugc"
+                          ? (zh ? "粘贴 Instagram / TikTok / Reviews 等平台链接，Nohi 会抓取并整理。" : "Paste links from Instagram / TikTok / Reviews / etc. — Nohi will fetch and organize.")
+                          : (zh ? "你可以直接在下方字段里编辑，或在左侧对话里补充一个 PDF / 文档。" : "You can edit the fields below, or drop a PDF / doc into the chat on the left.")}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* ── DETAILS step ── */}
               {step.key === "details" && (
@@ -1669,6 +1830,64 @@ export default function BrandContextPage() {
                               </div>
                             )}
                           </div>
+
+                          {/* Reviews sync controls (only for reviews platform) */}
+                          {isReviews && (
+                            <div className="rounded-xl border border-border bg-background p-3 flex flex-wrap items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <Clock className="size-3.5 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-medium text-foreground">
+                                    {zh ? "同步设置" : "Sync"}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                                    {zh ? "上次同步" : "Last synced"} {reviewsLastSynced}
+                                  </span>
+                                </div>
+                              </div>
+                              <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
+                                <input
+                                  type="checkbox"
+                                  checked={reviewsAutoSync}
+                                  onChange={(e) => setReviewsAutoSync(e.target.checked)}
+                                  className="accent-foreground"
+                                />
+                                <span>{zh ? "自动同步" : "Auto-sync"}</span>
+                              </label>
+                              <select
+                                value={reviewsSyncFreq}
+                                onChange={(e) => setReviewsSyncFreq(e.target.value as "daily" | "weekly" | "monthly")}
+                                disabled={!reviewsAutoSync}
+                                className="bg-secondary border border-border rounded-md px-2 py-0.5 text-[11px] text-foreground disabled:opacity-50"
+                              >
+                                <option value="daily">{zh ? "每日" : "Daily"}</option>
+                                <option value="weekly">{zh ? "每周" : "Weekly"}</option>
+                                <option value="monthly">{zh ? "每月" : "Monthly"}</option>
+                              </select>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 rounded-full text-[11px] px-3 ml-auto"
+                                disabled={reviewsSyncing}
+                                onClick={() => {
+                                  setReviewsSyncing(true)
+                                  setTimeout(() => {
+                                    const newRows: PlatformItem[] = [
+                                      { id: `rv-sync-${Date.now()}-a`, title: "Fast shipping and great packaging — impressed", url: "https://site.com/reviews/new-a", author: "Noa K.", publishedAt: zh ? "刚刚" : "just now", rating: 5, verified: true, sentiment: "positive", themes: ["shipping","packaging"], status: "pending", agentAvailable: false, product: "Linen Shirt", category: "Apparel" },
+                                      { id: `rv-sync-${Date.now()}-b`, title: "Mug chipped on arrival, second one this month", url: "https://site.com/reviews/new-b", author: "Ray O.", publishedAt: zh ? "刚刚" : "just now", rating: 1, verified: true, sentiment: "negative", themes: ["packaging","quality"], status: "pending", agentAvailable: false, product: "Ceramic Mug", category: "Home" },
+                                    ]
+                                    updatePlatform("reviews", (p) => ({ ...p, items: [...newRows, ...p.items], lastSyncedDisplay: zh ? "刚刚" : "just now" }))
+                                    setReviewsLastSynced(zh ? "刚刚" : "just now")
+                                    setReviewsSyncing(false)
+                                  }, 1200)
+                                }}
+                              >
+                                {reviewsSyncing
+                                  ? (zh ? "同步中..." : "Syncing...")
+                                  : (zh ? "立即同步" : "Sync now")}
+                              </Button>
+                            </div>
+                          )}
 
                           {/* Reviews auto-rules (only for reviews platform) */}
                           {isReviews && (
